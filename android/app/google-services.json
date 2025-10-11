@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "298424419979",
+    "project_id": "fixhub-bce27",
+    "storage_bucket": "fixhub-bce27.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:298424419979:android:5bf226088731aa239c768e",
+        "android_client_info": {
+          "package_name": "com.example.car_maintenance_system_new"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC3YAVJvGSSv45cIB8x-oNpwP3Ctnk73Og"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
