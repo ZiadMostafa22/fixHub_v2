@@ -69,7 +69,12 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
               // TODO: Navigate to notifications
             },
           ),
-
+          IconButton(
+            icon: Icon(Icons.logout, size: 22.sp),
+            onPressed: () {
+              ref.read(authProvider.notifier).signOut();
+            },
+          ),
         ],
       ),
       body: SingleChildScrollView(
