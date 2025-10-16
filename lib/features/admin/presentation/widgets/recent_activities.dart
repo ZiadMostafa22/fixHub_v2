@@ -134,6 +134,12 @@ class RecentActivities extends ConsumerWidget {
         icon = Icons.build;
         color = Colors.purple;
         break;
+      case BookingStatus.completedPendingPayment:
+        title = 'Awaiting Payment';
+        description = '${_getMaintenanceTypeName(booking.maintenanceType)} completed, waiting for payment - \$${booking.totalCost.toStringAsFixed(2)}';
+        icon = Icons.payment;
+        color = Colors.deepPurple;
+        break;
       case BookingStatus.completed:
         title = 'Service Completed';
         description = '${_getMaintenanceTypeName(booking.maintenanceType)} completed - \$${booking.totalCost.toStringAsFixed(2)}';

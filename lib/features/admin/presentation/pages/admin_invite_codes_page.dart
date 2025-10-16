@@ -375,6 +375,10 @@ class _AdminInviteCodesPageState extends State<AdminInviteCodesPage> {
                               child: Text('Technician', style: TextStyle(fontSize: 14.sp)),
                             ),
                             DropdownMenuItem(
+                              value: 'cashier',
+                              child: Text('Cashier', style: TextStyle(fontSize: 14.sp)),
+                            ),
+                            DropdownMenuItem(
                               value: 'admin',
                               child: Text('Admin', style: TextStyle(fontSize: 14.sp)),
                             ),

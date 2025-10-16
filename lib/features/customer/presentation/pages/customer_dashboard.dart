@@ -5,8 +5,12 @@ import 'package:go_router/go_router.dart';
 import 'package:car_maintenance_system_new/core/providers/auth_provider.dart';
 import 'package:car_maintenance_system_new/core/providers/booking_provider.dart';
 import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
+import 'package:car_maintenance_system_new/features/shared/presentation/pages/settings_page.dart';
 import 'package:car_maintenance_system_new/features/customer/presentation/widgets/quick_actions.dart';
 import 'package:car_maintenance_system_new/features/customer/presentation/widgets/upcoming_appointments.dart';
+import 'package:car_maintenance_system_new/features/customer/presentation/widgets/active_services.dart';
+import 'package:car_maintenance_system_new/features/customer/presentation/widgets/missed_appointments.dart';
+import 'package:car_maintenance_system_new/core/models/booking_model.dart';
 
 class CustomerDashboard extends ConsumerStatefulWidget {
   const CustomerDashboard({super.key});
@@ -34,7 +38,13 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
   @override
   void dispose() {
     // Stop listening when dashboard is disposed
-    ref.read(bookingProvider.notifier).stopListening();
+    // Wrap in try-catch to handle cases where widget is already disposed during logout
+    try {
+      ref.read(bookingProvider.notifier).stopListening();
+    } catch (e) {
+      // Widget was already disposed, safe to ignore
+      debugPrint('Dashboard disposed, listener cleanup skipped: $e');
+    }
     super.dispose();
   }
 
@@ -58,6 +68,15 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
           style: TextStyle(fontSize: 18.sp),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.settings, size: 22.sp),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsPage()),
+              );
+            },
+          ),
           IconButton(
             icon: Icon(Icons.notifications, size: 22.sp),
             onPressed: () {
@@ -115,16 +134,43 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
             
             SizedBox(height: 24.h),
             
-            // Upcoming Appointments
-            Text(
-              'Upcoming Appointments',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 18.sp,
-              ),
+            // Upcoming Appointments (only show section if there are appointments)
+            Consumer(
+              builder: (context, ref, child) {
+                final bookingState = ref.watch(bookingProvider);
+                final upcomingBookings = bookingState.bookings.where((booking) {
+                  return (booking.status == BookingStatus.pending ||
+                          booking.status == BookingStatus.confirmed) &&
+                         booking.scheduledDate.isAfter(DateTime.now());
+                }).toList();
+                
+                if (upcomingBookings.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Upcoming Appointments',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18.sp,
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+                    const UpcomingAppointments(),
+                    SizedBox(height: 24.h),
+                  ],
+                );
+              },
             ),
-            SizedBox(height: 16.h),
-            const UpcomingAppointments(),
+            
+            // Missed Appointments (show if any exist)
+            const MissedAppointments(),
+            
+            // Active Services (In Progress & Pending Payment)
+            const ActiveServices(),
             
             SizedBox(height: 24.h),
             

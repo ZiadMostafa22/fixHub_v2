@@ -270,7 +270,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       
       // Force customer role if no invite code provided (security measure)
       String validatedRole = role;
-      if (role == 'technician' || role == 'admin') {
+      if (role == 'technician' || role == 'admin' || role == 'cashier') {
         if (inviteCode == null || inviteCode.isEmpty) {
           if (kDebugMode) {
             debugPrint('⚠️ Security: Attempted to register as $role without invite code. Forcing customer role.');
@@ -350,6 +350,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
           break;
         case 'admin':
           userRole = app_models.UserRole.admin;
+          break;
+        case 'cashier':
+          userRole = app_models.UserRole.cashier;
           break;
         default:
           userRole = app_models.UserRole.customer;

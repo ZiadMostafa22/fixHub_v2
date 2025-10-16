@@ -279,18 +279,21 @@ class _CustomerBookingsPageState extends ConsumerState<CustomerBookingsPage> {
   }
 
   Future<void> _cancelBooking(String bookingId) async {
+    // Capture the ScaffoldMessenger before showing dialog
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Cancel Booking'),
         content: const Text('Are you sure you want to cancel this booking?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () => Navigator.pop(dialogContext, false),
             child: const Text('No'),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(dialogContext, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Yes, Cancel'),
           ),
@@ -298,17 +301,16 @@ class _CustomerBookingsPageState extends ConsumerState<CustomerBookingsPage> {
       ),
     );
 
-    if (confirmed == true && mounted) {
+    if (confirmed == true) {
       final success = await ref.read(bookingProvider.notifier).cancelBooking(bookingId);
       
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(success ? 'Booking cancelled' : 'Failed to cancel booking'),
-            backgroundColor: success ? Colors.green : Colors.red,
-          ),
-        );
-      }
+      // Use the captured ScaffoldMessenger instead of context
+      scaffoldMessenger.showSnackBar(
+        SnackBar(
+          content: Text(success ? 'Booking cancelled' : 'Failed to cancel booking'),
+          backgroundColor: success ? Colors.green : Colors.red,
+        ),
+      );
     }
   }
 
@@ -333,6 +335,8 @@ class _CustomerBookingsPageState extends ConsumerState<CustomerBookingsPage> {
         return 'Confirmed';
       case BookingStatus.inProgress:
         return 'In Progress';
+      case BookingStatus.completedPendingPayment:
+        return 'Awaiting Payment';
       case BookingStatus.completed:
         return 'Completed';
       case BookingStatus.cancelled:
@@ -348,6 +352,8 @@ class _CustomerBookingsPageState extends ConsumerState<CustomerBookingsPage> {
         return Colors.orange;
       case BookingStatus.inProgress:
         return Colors.blue;
+      case BookingStatus.completedPendingPayment:
+        return Colors.deepPurple;
       case BookingStatus.completed:
         return Colors.green;
       case BookingStatus.cancelled:

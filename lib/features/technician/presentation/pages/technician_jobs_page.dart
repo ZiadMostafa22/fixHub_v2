@@ -6,6 +6,7 @@ import 'package:car_maintenance_system_new/core/providers/auth_provider.dart';
 import 'package:car_maintenance_system_new/core/providers/booking_provider.dart';
 import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
 import 'package:car_maintenance_system_new/core/models/booking_model.dart';
+import 'package:car_maintenance_system_new/core/widgets/unified_filter_widget.dart';
 
 class TechnicianJobsPage extends ConsumerStatefulWidget {
   const TechnicianJobsPage({super.key});
@@ -16,6 +17,7 @@ class TechnicianJobsPage extends ConsumerStatefulWidget {
 
 class _TechnicianJobsPageState extends ConsumerState<TechnicianJobsPage> {
   String _filterStatus = 'all';
+  DateTimeRange? _dateRange;
 
   @override
   void initState() {
@@ -33,7 +35,13 @@ class _TechnicianJobsPageState extends ConsumerState<TechnicianJobsPage> {
   @override
   void dispose() {
     // Stop listening when page is disposed
-    ref.read(bookingProvider.notifier).stopListening();
+    // Wrap in try-catch to handle cases where widget is already disposed during logout
+    try {
+      ref.read(bookingProvider.notifier).stopListening();
+    } catch (e) {
+      // Widget was already disposed, safe to ignore
+      debugPrint('Jobs page disposed, listener cleanup skipped: $e');
+    }
     super.dispose();
   }
 
@@ -41,20 +49,13 @@ class _TechnicianJobsPageState extends ConsumerState<TechnicianJobsPage> {
   Widget build(BuildContext context) {
     final bookingState = ref.watch(bookingProvider);
     final carState = ref.watch(carProvider);
-    final user = ref.read(authProvider).user;
     
-    // Filter bookings - show unassigned jobs (available) OR jobs assigned to this technician
+    // Filter bookings - show ALL jobs to ALL technicians (no assignment filter)
     final filteredBookings = bookingState.bookings.where((booking) {
-      // Show jobs that are either unassigned (available work) OR assigned to this technician
-      final isUnassigned = booking.assignedTechnicians == null || booking.assignedTechnicians!.isEmpty;
-      final isAssignedToMe = booking.assignedTechnicians != null && 
-                            booking.assignedTechnicians!.isNotEmpty && 
-                            booking.assignedTechnicians!.contains(user?.id);
-      final canSeeJob = isUnassigned || isAssignedToMe;
+      // Show ALL jobs regardless of assignment - any technician can see any job
+      // This allows technicians to see all available work and collaborate
       
-      if (!canSeeJob) return false;
-      
-      // Then apply status filter
+      // Apply status filter
       if (_filterStatus == 'all') return true;
       if (_filterStatus == 'pending') return booking.status == BookingStatus.pending || booking.status == BookingStatus.confirmed;
       if (_filterStatus == 'in_progress') return booking.status == BookingStatus.inProgress;
@@ -68,26 +69,32 @@ class _TechnicianJobsPageState extends ConsumerState<TechnicianJobsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Jobs'),
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.filter_list),
-            onSelected: (value) {
+      ),
+      body: Column(
+        children: [
+          // Unified Filter Widget
+          UnifiedFilterWidget(
+            selectedFilter: _filterStatus,
+            dateRange: _dateRange,
+            filterOptions: FilterOptions.technicianJobs,
+            onFilterChanged: (value) {
               setState(() {
                 _filterStatus = value;
               });
             },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'all', child: Text('All Jobs')),
-              const PopupMenuItem(value: 'pending', child: Text('Pending')),
-              const PopupMenuItem(value: 'in_progress', child: Text('In Progress')),
-              const PopupMenuItem(value: 'completed', child: Text('Completed')),
-            ],
+            onDateRangeChanged: (range) {
+              setState(() {
+                _dateRange = range;
+              });
+            },
+            showDateFilter: true,
+            showStatusFilter: true,
           ),
-        ],
-      ),
-      body: bookingState.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : filteredBookings.isEmpty
+          // Content
+          Expanded(
+            child: bookingState.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : filteredBookings.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -238,6 +245,9 @@ class _TechnicianJobsPageState extends ConsumerState<TechnicianJobsPage> {
                     );
                   },
                 ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -262,6 +272,8 @@ class _TechnicianJobsPageState extends ConsumerState<TechnicianJobsPage> {
         return 'Confirmed';
       case BookingStatus.inProgress:
         return 'In Progress';
+      case BookingStatus.completedPendingPayment:
+        return 'Awaiting Payment';
       case BookingStatus.completed:
         return 'Completed';
       case BookingStatus.cancelled:
@@ -277,6 +289,8 @@ class _TechnicianJobsPageState extends ConsumerState<TechnicianJobsPage> {
         return Colors.green;
       case BookingStatus.inProgress:
         return Colors.blue;
+      case BookingStatus.completedPendingPayment:
+        return Colors.deepPurple;
       case BookingStatus.completed:
         return Colors.green;
       case BookingStatus.cancelled:

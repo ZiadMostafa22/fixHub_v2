@@ -65,6 +65,27 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
     setState(() {});
   }
 
+  Future<Map<String, String>> _getUserInfo(String userId) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      
+      if (userDoc.exists) {
+        final data = userDoc.data()!;
+        return <String, String>{
+          'name': data['name']?.toString() ?? 'Unknown',
+          'phone': data['phone']?.toString() ?? 'N/A',
+        };
+      }
+    } catch (e) {
+      debugPrint('Error fetching user info: $e');
+    }
+
+    return <String, String>{'name': 'Unknown', 'phone': 'N/A'};
+  }
+
   @override
   void dispose() {
     // Auto-save on exit if there are unsaved changes
@@ -137,7 +158,13 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text('Customer ID: ${_booking!.userId}'),
+                      FutureBuilder<Map<String, String>>(
+                        future: _getUserInfo(_booking!.userId),
+                        builder: (context, snapshot) {
+                          final customerName = snapshot.data?['name'] ?? 'Loading...';
+                          return Text('Customer: $customerName');
+                        },
+                      ),
                       if (_car != null) ...[
                         Text('Car: ${_car!.make} ${_car!.model}'),
                         Text('Plate: ${_car!.licensePlate}'),
@@ -214,7 +241,12 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
                       leading: CircleAvatar(
                         child: Icon(_getItemIcon(item.type)),
                       ),
-                      title: Text(item.name),
+                      title: Text(
+                        item.name,
+                        overflow: TextOverflow.visible,
+                        maxLines: 2,
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -405,13 +437,18 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: ElevatedButton.icon(
+                      child: OutlinedButton.icon(
                         onPressed: _saveAndComplete,
                         icon: const Icon(Icons.check_circle),
-                        label: const Text('Complete Job'),
-                        style: ElevatedButton.styleFrom(
+                        label: const Text(
+                          'Complete Job',
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                        style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.all(16),
-                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.green,
+                          side: const BorderSide(color: Colors.green),
                         ),
                       ),
                     ),
@@ -791,6 +828,5 @@ class _ServiceItemDialogState extends State<_ServiceItemDialog> {
     super.dispose();
   }
 }
-
 
 

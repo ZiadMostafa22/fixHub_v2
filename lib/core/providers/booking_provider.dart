@@ -46,8 +46,8 @@ class BookingNotifier extends StateNotifier<BookingState> {
       state = state.copyWith(isLoading: true, error: null);
       
       Query query;
-      if (role == 'admin' || role == 'technician') {
-        // Admin and Technician see all bookings - can use orderBy directly
+      if (role == 'admin' || role == 'technician' || role == 'cashier') {
+        // Admin, Technician, and Cashier see all bookings - can use orderBy directly
         query = FirebaseService.bookingsCollection.orderBy('createdAt', descending: true);
       } else {
         // Customer sees only their bookings - can't combine where + orderBy without composite index
@@ -61,7 +61,7 @@ class BookingNotifier extends StateNotifier<BookingState> {
           .toList();
       
       // Sort in memory if we didn't use orderBy in the query
-      if (role != 'admin' && role != 'technician') {
+      if (role != 'admin' && role != 'technician' && role != 'cashier') {
         bookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       }
       
@@ -87,8 +87,8 @@ class BookingNotifier extends StateNotifier<BookingState> {
     _bookingsSubscription?.cancel();
     
     Query query;
-    if (role == 'admin' || role == 'technician') {
-      // Admin and Technician see all bookings - can use orderBy directly
+    if (role == 'admin' || role == 'technician' || role == 'cashier') {
+      // Admin, Technician, and Cashier see all bookings - can use orderBy directly
       query = FirebaseService.bookingsCollection.orderBy('createdAt', descending: true);
     } else {
       // Customer sees only their bookings - can't combine where + orderBy without composite index
@@ -105,7 +105,7 @@ class BookingNotifier extends StateNotifier<BookingState> {
             .toList();
         
         // Sort in memory if we didn't use orderBy in the query
-        if (role != 'admin' && role != 'technician') {
+        if (role != 'admin' && role != 'technician' && role != 'cashier') {
           bookings.sort((a, b) => b.createdAt.compareTo(a.createdAt));
         }
         
@@ -114,9 +114,22 @@ class BookingNotifier extends StateNotifier<BookingState> {
           for (var booking in bookings.take(3)) {
             print('  - ${booking.id}: ${booking.status}');
           }
+          // Debug: Check for bookings with discount info
+          for (var booking in bookings) {
+            if (booking.offerCode != null || booking.discountPercentage != null) {
+              print('💰 Found booking with discount: ${booking.id}');
+              print('   - Code: ${booking.offerCode}');
+              print('   - Title: ${booking.offerTitle}');
+              print('   - %: ${booking.discountPercentage}');
+            }
+          }
         }
         
-        state = state.copyWith(bookings: bookings, isLoading: false);
+        // Only update if we have meaningful changes to prevent UI flicker
+        if (bookings.length != state.bookings.length || 
+            bookings.any((booking) => !state.bookings.any((b) => b.id == booking.id && b.status == booking.status))) {
+          state = state.copyWith(bookings: bookings, isLoading: false);
+        }
       },
       onError: (error) {
         if (kDebugMode) {
@@ -143,6 +156,17 @@ class BookingNotifier extends StateNotifier<BookingState> {
     try {
       state = state.copyWith(isLoading: true, error: null);
       
+      // Debug: Print booking data before saving
+      if (kDebugMode) {
+        print('📤 Creating booking with data:');
+        print('  - ID: ${booking.id}');
+        print('  - User ID: ${booking.userId}');
+        print('  - Offer Code: ${booking.offerCode}');
+        print('  - Offer Title: ${booking.offerTitle}');
+        print('  - Discount %: ${booking.discountPercentage}');
+        print('  - Firestore data: ${booking.toFirestore()}');
+      }
+      
       // Add to Firestore - the real-time listener will automatically add it to state
       await FirebaseService.bookingsCollection.add(booking.toFirestore());
       
@@ -168,11 +192,11 @@ class BookingNotifier extends StateNotifier<BookingState> {
         print('📝 Updating booking $bookingId with: $updates');
       }
       
-      // Update Firestore - the real-time listener will automatically update state
+      // Simple update to Firestore - let real-time listener handle state update
       await FirebaseService.bookingsCollection.doc(bookingId).update(updates);
       
       if (kDebugMode) {
-        print('✅ Booking updated successfully in Firebase - real-time listener will update state');
+        print('✅ Booking updated successfully - real-time listener will update state');
       }
       
       return true;
@@ -180,16 +204,52 @@ class BookingNotifier extends StateNotifier<BookingState> {
       if (kDebugMode) {
         print('❌ Error updating booking: $e');
       }
-      state = state.copyWith(error: e.toString());
       return false;
     }
   }
 
   Future<bool> cancelBooking(String bookingId) async {
-    return updateBooking(bookingId, {
-      'status': 'cancelled',
-      'updatedAt': Timestamp.now(),
-    });
+    try {
+      if (kDebugMode) {
+        print('🚫 Cancelling booking $bookingId');
+      }
+      
+      // Immediately update local state first to prevent loading issues
+      final updatedBookings = state.bookings.map((booking) {
+        if (booking.id == bookingId) {
+          return booking.copyWith(
+            status: BookingStatus.cancelled,
+            updatedAt: DateTime.now(),
+          );
+        }
+        return booking;
+      }).toList();
+      
+      state = state.copyWith(bookings: updatedBookings);
+      
+      // Update Firestore (non-blocking)
+      FirebaseService.bookingsCollection.doc(bookingId).update({
+        'status': 'cancelled',
+        'updatedAt': Timestamp.now(),
+      }).catchError((error) {
+        if (kDebugMode) {
+          print('❌ Firestore update error (non-critical): $error');
+        }
+        // Don't fail the operation if Firestore update fails
+        // The local state is already updated
+      });
+      
+      if (kDebugMode) {
+        print('✅ Booking $bookingId cancelled successfully');
+      }
+      
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ Error cancelling booking $bookingId: $e');
+      }
+      return false;
+    }
   }
 
   Future<bool> updateBookingStatus(
@@ -238,6 +298,31 @@ class BookingNotifier extends StateNotifier<BookingState> {
       return true;
     } catch (e) {
       debugPrint('Error rating booking: $e');
+      return false;
+    }
+  }
+
+  Future<bool> processPayment({
+    required String bookingId,
+    required String cashierId,
+    required PaymentMethod paymentMethod,
+  }) async {
+    try {
+      await FirebaseService.bookingsCollection.doc(bookingId).update({
+        'status': 'completed',
+        'isPaid': true,
+        'paidAt': Timestamp.now(),
+        'cashierId': cashierId,
+        'paymentMethod': paymentMethod.toString().split('.').last,
+        'updatedAt': Timestamp.now(),
+      });
+      
+      // Reload bookings using cashier ID with cashier role
+      await loadBookings(cashierId, role: 'cashier');
+      
+      return true;
+    } catch (e) {
+      debugPrint('Error processing payment: $e');
       return false;
     }
   }

@@ -41,7 +41,13 @@ class _AdminAnalyticsPageState extends ConsumerState<AdminAnalyticsPage> {
   @override
   void dispose() {
     // Stop listening when page is disposed
-    ref.read(bookingProvider.notifier).stopListening();
+    // Wrap in try-catch to handle cases where widget is already disposed during logout
+    try {
+      ref.read(bookingProvider.notifier).stopListening();
+    } catch (e) {
+      // Widget was already disposed, safe to ignore
+      debugPrint('Analytics page disposed, listener cleanup skipped: $e');
+    }
     super.dispose();
   }
 

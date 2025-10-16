@@ -135,25 +135,104 @@ class _NewBookingPageState extends ConsumerState<NewBookingPage> {
   }
 
   Future<void> _selectDate() async {
+    // Allow booking from today onwards
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now(),
+      initialDate: today,
+      firstDate: today, // Can book from today
       lastDate: DateTime.now().add(const Duration(days: 90)),
+      selectableDayPredicate: (DateTime date) {
+        // Disable Fridays (day 5)
+        return date.weekday != DateTime.friday;
+      },
+      helpText: 'Select Appointment Date (Closed on Fridays)',
     );
+    
     if (picked != null) {
+      // Double check that it's not Friday
+      if (picked.weekday == DateTime.friday) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('We are closed on Fridays. Please select another day.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+      
       setState(() {
         _selectedDate = picked;
+        // Reset time selection when date changes
+        _selectedTime = null;
       });
     }
   }
 
   Future<void> _selectTime() async {
+    // Validate that date is selected first
+    if (_selectedDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a date first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+    
+    // Check if selected date is Friday (day 5 in Dart - Monday is 1)
+    if (_selectedDate!.weekday == DateTime.friday) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('We are closed on Fridays. Please select another day.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: const TimeOfDay(hour: 9, minute: 0),
+      helpText: 'Working Hours: 8:00 AM - 6:00 PM',
     );
+    
     if (picked != null) {
+      // Validate working hours (8 AM to 6 PM)
+      // Allow times from 8:00 to 18:00 (6:00 PM)
+      final pickedHour = picked.hour;
+      
+      if (pickedHour < 8 || pickedHour > 18) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a time between 8:00 AM and 6:00 PM'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+      
+      // Allow 6:00 PM exactly, but not after
+      if (pickedHour == 18 && picked.minute > 0) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Last appointment time is 6:00 PM'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+      
       setState(() {
         _selectedTime = picked;
       });
@@ -184,6 +263,39 @@ class _NewBookingPageState extends ConsumerState<NewBookingPage> {
         );
         return;
       }
+      
+      // Final validation for working hours
+      if (_selectedDate!.weekday == DateTime.friday) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('We are closed on Fridays. Please select another day.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      // Validate working hours (8 AM to 6 PM)
+      if (_selectedTime!.hour < 8 || _selectedTime!.hour > 18) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a time between 8:00 AM and 6:00 PM'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      // Allow 6:00 PM exactly, but not after
+      if (_selectedTime!.hour == 18 && _selectedTime!.minute > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Last appointment time is 6:00 PM'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
       final user = ref.read(authProvider).user;
       if (user == null) {
@@ -195,6 +307,8 @@ class _NewBookingPageState extends ConsumerState<NewBookingPage> {
       print('🚗 Car: $_selectedCarId');
       print('🛠️ Service: $_selectedService');
       print('💰 Discount: ${_appliedOffer?.code} (${_appliedOffer?.discountPercentage}%)');
+      print('💰 Offer Title: ${_appliedOffer?.title}');
+      print('💰 Offer ID: ${_appliedOffer?.id}');
 
       final scheduledDateTime = DateTime(
         _selectedDate!.year,
@@ -647,4 +761,3 @@ class _NewBookingPageState extends ConsumerState<NewBookingPage> {
     );
   }
 }
-

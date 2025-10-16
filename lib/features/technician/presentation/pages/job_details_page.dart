@@ -67,6 +67,27 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
     setState(() {});
   }
 
+  Future<Map<String, String>> _getUserInfo(String userId) async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      
+      if (userDoc.exists) {
+        final data = userDoc.data()!;
+        return <String, String>{
+          'name': data['name']?.toString() ?? 'Unknown',
+          'phone': data['phone']?.toString() ?? 'N/A',
+        };
+      }
+    } catch (e) {
+      debugPrint('Error fetching user info: $e');
+    }
+
+    return <String, String>{'name': 'Unknown', 'phone': 'N/A'};
+  }
+
   @override
   void dispose() {
     // Auto-save on exit if there are unsaved changes
@@ -124,7 +145,13 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      Text('Customer ID: ${_booking!.userId}'),
+                      FutureBuilder<Map<String, String>>(
+                        future: _getUserInfo(_booking!.userId),
+                        builder: (context, snapshot) {
+                          final customerName = snapshot.data?['name'] ?? 'Loading...';
+                          return Text('Customer: $customerName');
+                        },
+                      ),
                       if (_car != null) ...[
                         Text('Car: ${_car!.make} ${_car!.model}'),
                         Text('Plate: ${_car!.licensePlate}'),
@@ -201,7 +228,12 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
                       leading: CircleAvatar(
                         child: Icon(_getItemIcon(item.type)),
                       ),
-                      title: Text(item.name),
+                      title: Text(
+                        item.name,
+                        overflow: TextOverflow.visible,
+                        maxLines: 2,
+                        style: TextStyle(fontWeight: FontWeight.w500),
+                      ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -403,7 +435,11 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
                       child: OutlinedButton.icon(
                         onPressed: _saveAndComplete,
                         icon: const Icon(Icons.check_circle),
-                        label: const Text('Complete Job'),
+                        label: const Text(
+                          'Complete Job',
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.all(16),
                           foregroundColor: Colors.green,
@@ -570,7 +606,7 @@ class _JobDetailsPageState extends ConsumerState<JobDetailsPage> {
         'laborCost': laborCost,
         'tax': tax,
         'technicianNotes': _technicianNotesController.text,
-        'status': BookingStatus.completed.toString().split('.').last,
+        'status': BookingStatus.completedPendingPayment.toString().split('.').last,
         'completedAt': Timestamp.now(),
         'updatedAt': Timestamp.now(),
       },
@@ -666,28 +702,31 @@ class _ServiceItemDialogState extends State<_ServiceItemDialog> {
                     contentPadding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 10.h),
                   ),
                   menuMaxHeight: 0.5.sh,
+                  selectedItemBuilder: (BuildContext context) {
+                    return widget.predefinedItems.map<Widget>((ServiceItemModel item) {
+                      return Container(
+                        width: double.infinity,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          item.name,
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      );
+                    }).toList();
+                  },
                   items: widget.predefinedItems.map((item) {
                     return DropdownMenuItem(
                       value: item,
-                      child: SizedBox(
-                        width: 0.65.sw,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              item.name,
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13.sp),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                            Text(
-                              '\$${item.price.toStringAsFixed(2)} - ${item.type.toString().split('.').last}',
-                              style: TextStyle(fontSize: 11.sp, color: Colors.grey),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ],
+                      child: Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(vertical: 8.h),
+                        child: Text(
+                          item.name,
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14.sp),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     );
@@ -733,6 +772,9 @@ class _ServiceItemDialogState extends State<_ServiceItemDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 12.h),
+          ),
           child: Text('Cancel', style: TextStyle(fontSize: 14.sp)),
         ),
         ElevatedButton(
@@ -765,4 +807,3 @@ class _ServiceItemDialogState extends State<_ServiceItemDialog> {
     super.dispose();
   }
 }
-

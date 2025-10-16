@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:car_maintenance_system_new/core/providers/auth_provider.dart';
 import 'package:car_maintenance_system_new/core/providers/booking_provider.dart';
 import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
+import 'package:car_maintenance_system_new/features/shared/presentation/pages/settings_page.dart';
 import 'package:car_maintenance_system_new/features/technician/presentation/widgets/today_jobs.dart';
 import 'package:car_maintenance_system_new/features/technician/presentation/widgets/performance_stats.dart';
 
@@ -34,7 +35,13 @@ class _TechnicianDashboardState extends ConsumerState<TechnicianDashboard> {
   @override
   void dispose() {
     // Stop listening when dashboard is disposed
-    ref.read(bookingProvider.notifier).stopListening();
+    // Wrap in try-catch to handle cases where widget is already disposed during logout
+    try {
+      ref.read(bookingProvider.notifier).stopListening();
+    } catch (e) {
+      // Widget was already disposed, safe to ignore
+      debugPrint('Dashboard disposed, listener cleanup skipped: $e');
+    }
     super.dispose();
   }
 
@@ -59,20 +66,18 @@ class _TechnicianDashboardState extends ConsumerState<TechnicianDashboard> {
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.refresh, size: 22.sp),
-            onPressed: _refreshData,
-            tooltip: 'Refresh',
+            icon: Icon(Icons.settings, size: 22.sp),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsPage()),
+              );
+            },
           ),
           IconButton(
             icon: Icon(Icons.notifications, size: 22.sp),
             onPressed: () {
               // TODO: Navigate to notifications
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.logout, size: 22.sp),
-            onPressed: () {
-              ref.read(authProvider.notifier).signOut();
             },
           ),
         ],

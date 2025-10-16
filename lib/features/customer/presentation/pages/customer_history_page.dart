@@ -8,6 +8,8 @@ import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
 import 'package:car_maintenance_system_new/core/models/booking_model.dart';
 import 'package:car_maintenance_system_new/core/utils/pdf_generator.dart';
 import 'package:car_maintenance_system_new/core/widgets/rating_dialog.dart';
+import 'package:car_maintenance_system_new/core/widgets/unified_filter_widget.dart';
+import 'package:car_maintenance_system_new/core/widgets/detailed_invoice_dialog.dart';
 
 class CustomerHistoryPage extends ConsumerStatefulWidget {
   const CustomerHistoryPage({super.key});
@@ -36,36 +38,6 @@ class _CustomerHistoryPageState extends ConsumerState<CustomerHistoryPage> {
     }
   }
 
-  Future<void> _selectDateRange(BuildContext context) async {
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      initialDateRange: _dateRange,
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: Theme.of(context).primaryColor,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (picked != null) {
-      setState(() {
-        _dateRange = picked;
-      });
-    }
-  }
-
-  void _clearDateFilter() {
-    setState(() {
-      _dateRange = null;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -147,70 +119,28 @@ class _CustomerHistoryPageState extends ConsumerState<CustomerHistoryPage> {
             onPressed: _refreshData,
             tooltip: 'Refresh',
           ),
-          // Date filter button
-          IconButton(
-            icon: Icon(
-              Icons.date_range,
-              color: _dateRange != null ? Colors.blue : null,
-            ),
-            onPressed: () => _selectDateRange(context),
-            tooltip: 'Filter by Date',
-          ),
-          // Status filter button
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.filter_list),
-            onSelected: (value) {
-              setState(() {
-                _selectedFilter = value;
-              });
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(value: 'all', child: Text('All')),
-              const PopupMenuItem(value: 'pending', child: Text('Pending')),
-              const PopupMenuItem(value: 'in_progress', child: Text('In Progress')),
-              const PopupMenuItem(value: 'completed', child: Text('Completed')),
-              const PopupMenuItem(value: 'cancelled', child: Text('Cancelled')),
-            ],
-          ),
         ],
       ),
       body: Column(
         children: [
-          // Filter chips display
-          if (_dateRange != null || _selectedFilter != 'all')
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Wrap(
-                spacing: 8,
-          children: [
-                  if (_dateRange != null)
-                    Chip(
-                      label: Text(
-                        '${DateFormat('MMM dd').format(_dateRange!.start)} - ${DateFormat('MMM dd, yyyy').format(_dateRange!.end)}',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      deleteIcon: const Icon(Icons.close, size: 18),
-                      onDeleted: _clearDateFilter,
-                      backgroundColor: Colors.blue.shade50,
-                    ),
-                  if (_selectedFilter != 'all')
-                    Chip(
-                      label: Text(
-                        _selectedFilter.substring(0, 1).toUpperCase() + _selectedFilter.substring(1),
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                      deleteIcon: const Icon(Icons.close, size: 18),
-                      onDeleted: () {
-                        setState(() {
-                          _selectedFilter = 'all';
-                        });
-                      },
-                      backgroundColor: Colors.orange.shade50,
-                    ),
-                ],
-              ),
-            ),
-          
+          // Unified Filter Widget
+          UnifiedFilterWidget(
+            selectedFilter: _selectedFilter,
+            dateRange: _dateRange,
+            filterOptions: FilterOptions.bookingStatus,
+            onFilterChanged: (value) {
+              setState(() {
+                _selectedFilter = value;
+              });
+            },
+            onDateRangeChanged: (range) {
+              setState(() {
+                _dateRange = range;
+              });
+            },
+            showDateFilter: true,
+            showStatusFilter: true,
+          ),
           // Stats Card
           Card(
             margin: const EdgeInsets.all(16),
@@ -420,23 +350,53 @@ class _CustomerHistoryPageState extends ConsumerState<CustomerHistoryPage> {
                                     ),
                                     if (booking.status == BookingStatus.completed) ...[
                                       const Divider(height: 20),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          const Text(
-                                            'Total Cost:',
-                                            style: TextStyle(fontWeight: FontWeight.bold),
-                                          ),
-                                          Text(
-                                            '\$${booking.totalCost.toStringAsFixed(2)}',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.green,
-                                              fontSize: 18,
+                                      GestureDetector(
+                                        onTap: () {
+                                          final car = carState.cars.where((c) => c.id == booking.carId).firstOrNull;
+                                          showDialog(
+                                            context: context,
+                                            builder: (context) => DetailedInvoiceDialog(
+                                              booking: booking,
+                                              car: car,
                                             ),
+                                          );
+                                        },
+                                        child: Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: Colors.green.withOpacity(0.1),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: Colors.green.withOpacity(0.3)),
                                           ),
-                                        ],
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              const Text(
+                                                'Total Cost:',
+                                                style: TextStyle(fontWeight: FontWeight.bold),
+                                              ),
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text(
+                                                    '\$${booking.totalCost.toStringAsFixed(2)}',
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.green,
+                                                      fontSize: 18,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  const Icon(
+                                                    Icons.receipt_long,
+                                                    color: Colors.green,
+                                                    size: 20,
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ),
                                       ),
                                       const SizedBox(height: 8),
                                       // Rating section
@@ -479,23 +439,26 @@ class _CustomerHistoryPageState extends ConsumerState<CustomerHistoryPage> {
                                           width: double.infinity,
                                           child: ElevatedButton.icon(
                                             onPressed: () {
+                                              // Capture the ScaffoldMessenger before showing dialog
+                                              final scaffoldMessenger = ScaffoldMessenger.of(context);
+                                              
                                               showDialog(
                                                 context: context,
-                                                builder: (context) => RatingDialog(
+                                                builder: (dialogContext) => RatingDialog(
                                                   onSubmit: (rating, comment) async {
                                                     final success = await ref
                                                         .read(bookingProvider.notifier)
                                                         .rateBooking(booking.id, rating, comment);
-                                                    if (mounted) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(
-                                                        SnackBar(
-                                                          content: Text(success
-                                                              ? 'Rating submitted successfully!'
-                                                              : 'Failed to submit rating'),
-                                                          backgroundColor: success ? Colors.green : Colors.red,
-                                                        ),
-                                                      );
-                                                    }
+                                                    
+                                                    // Use the captured ScaffoldMessenger instead of context
+                                                    scaffoldMessenger.showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(success
+                                                            ? 'Rating submitted successfully!'
+                                                            : 'Failed to submit rating'),
+                                                        backgroundColor: success ? Colors.green : Colors.red,
+                                                      ),
+                                                    );
                                                   },
                                                 ),
                                               );
@@ -543,6 +506,8 @@ class _CustomerHistoryPageState extends ConsumerState<CustomerHistoryPage> {
         return 'Confirmed';
       case BookingStatus.inProgress:
         return 'In Progress';
+      case BookingStatus.completedPendingPayment:
+        return 'Awaiting Payment';
       case BookingStatus.completed:
         return 'Completed';
       case BookingStatus.cancelled:
@@ -558,6 +523,8 @@ class _CustomerHistoryPageState extends ConsumerState<CustomerHistoryPage> {
         return Colors.blue;
       case BookingStatus.inProgress:
         return Colors.purple;
+      case BookingStatus.completedPendingPayment:
+        return Colors.deepPurple;
       case BookingStatus.completed:
         return Colors.green;
       case BookingStatus.cancelled:

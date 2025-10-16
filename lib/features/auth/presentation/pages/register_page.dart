@@ -202,28 +202,41 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   ),
                   child: Column(
                     children: [
-                      RadioListTile<bool>(
+                      RadioListTile<String>(
                         title: const Text('Customer Account'),
                         subtitle: const Text('Book services and manage your vehicles'),
-                        value: false,
-                        groupValue: _showInviteCode,
+                        value: 'customer',
+                        groupValue: _selectedRole,
                         onChanged: (value) {
                           setState(() {
-                            _showInviteCode = false;
                             _selectedRole = 'customer';
+                            _showInviteCode = false;
                           });
                         },
                       ),
                       const Divider(height: 1),
-                      RadioListTile<bool>(
+                      RadioListTile<String>(
                         title: const Text('Technician Account'),
                         subtitle: const Text('Requires an invite code from admin'),
-                        value: true,
-                        groupValue: _showInviteCode,
+                        value: 'technician',
+                        groupValue: _selectedRole,
                         onChanged: (value) {
                           setState(() {
-                            _showInviteCode = true;
                             _selectedRole = 'technician';
+                            _showInviteCode = true;
+                          });
+                        },
+                      ),
+                      const Divider(height: 1),
+                      RadioListTile<String>(
+                        title: const Text('Cashier Account'),
+                        subtitle: const Text('Requires an invite code from admin'),
+                        value: 'cashier',
+                        groupValue: _selectedRole,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedRole = 'cashier';
+                            _showInviteCode = true;
                           });
                         },
                       ),
@@ -232,7 +245,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 ),
                 SizedBox(height: screenHeight * 0.015),
                 
-                // Invite Code Field (Only for Technicians)
+                // Invite Code Field (Only for Technicians/Cashiers)
                 if (_showInviteCode)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,7 +261,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                         ),
                         validator: (value) {
                           if (_showInviteCode && (value == null || value.isEmpty)) {
-                            return 'Invite code is required for technician accounts';
+                            return 'Invite code is required for this account type';
                           }
                           if (_showInviteCode && value!.length < 6) {
                             return 'Invalid invite code format';

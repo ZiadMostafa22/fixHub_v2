@@ -111,7 +111,13 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> {
   @override
   void dispose() {
     // Stop listening when page is disposed
-    ref.read(bookingProvider.notifier).stopListening();
+    // Wrap in try-catch to handle cases where widget is already disposed during logout
+    try {
+      ref.read(bookingProvider.notifier).stopListening();
+    } catch (e) {
+      // Widget was already disposed, safe to ignore
+      debugPrint('Bookings page disposed, listener cleanup skipped: $e');
+    }
     super.dispose();
   }
 
@@ -574,6 +580,8 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> {
         return 'Confirmed';
       case BookingStatus.inProgress:
         return 'In Progress';
+      case BookingStatus.completedPendingPayment:
+        return 'Awaiting Payment';
       case BookingStatus.completed:
         return 'Completed';
       case BookingStatus.cancelled:
@@ -589,6 +597,8 @@ class _AdminBookingsPageState extends ConsumerState<AdminBookingsPage> {
         return Colors.orange;
       case BookingStatus.inProgress:
         return Colors.blue;
+      case BookingStatus.completedPendingPayment:
+        return Colors.purple;
       case BookingStatus.completed:
         return Colors.green;
       case BookingStatus.cancelled:

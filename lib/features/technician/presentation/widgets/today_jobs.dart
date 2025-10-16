@@ -233,6 +233,8 @@ class TodayJobs extends ConsumerWidget {
         return 'Confirmed';
       case BookingStatus.inProgress:
         return 'In Progress';
+      case BookingStatus.completedPendingPayment:
+        return 'Awaiting Payment';
       case BookingStatus.completed:
         return 'Completed';
       case BookingStatus.cancelled:
@@ -248,6 +250,8 @@ class TodayJobs extends ConsumerWidget {
         return Colors.green;
       case BookingStatus.inProgress:
         return Colors.blue;
+      case BookingStatus.completedPendingPayment:
+        return Colors.deepPurple;
       case BookingStatus.completed:
         return Colors.green;
       case BookingStatus.cancelled:

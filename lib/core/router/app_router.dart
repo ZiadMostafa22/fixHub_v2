@@ -23,6 +23,10 @@ import 'package:car_maintenance_system_new/features/admin/presentation/pages/adm
 import 'package:car_maintenance_system_new/features/admin/presentation/pages/admin_offers_page.dart';
 import 'package:car_maintenance_system_new/features/admin/presentation/pages/admin_analytics_page.dart';
 import 'package:car_maintenance_system_new/features/admin/presentation/pages/admin_invite_codes_page.dart';
+import 'package:car_maintenance_system_new/features/cashier/presentation/pages/cashier_dashboard.dart';
+import 'package:car_maintenance_system_new/features/cashier/presentation/pages/cashier_payments_page.dart';
+import 'package:car_maintenance_system_new/features/cashier/presentation/pages/cashier_payment_details_page.dart';
+import 'package:car_maintenance_system_new/features/cashier/presentation/pages/cashier_profile_page.dart';
 import 'package:car_maintenance_system_new/features/splash/presentation/pages/splash_page.dart';
 
 // Create a listenable for auth state changes
@@ -71,7 +75,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (currentPath == '/splash') {
           return '/login'; // Go to login after splash
         }
+        // If user is not logged in and trying to access protected routes, redirect to login
         if (currentPath != '/login' && currentPath != '/register') {
+          if (kDebugMode) {
+            debugPrint('🔒 User not authenticated, redirecting to login from: $currentPath');
+          }
           return '/login';
         }
         return null;
@@ -80,6 +88,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Redirect based on user role when authenticated
       if (isLoggedIn) {
         if (currentPath == '/splash' || currentPath == '/login' || currentPath == '/register') {
+          if (kDebugMode) {
+            debugPrint('✅ User authenticated as $userRole, redirecting from: $currentPath');
+          }
           switch (userRole) {
             case 'customer':
               return '/customer';
@@ -87,8 +98,41 @@ final routerProvider = Provider<GoRouter>((ref) {
               return '/technician';
             case 'admin':
               return '/admin';
+            case 'cashier':
+              return '/cashier';
             default:
               return '/customer';
+          }
+        }
+        
+        // Verify user is accessing correct role-based route
+        if (userRole == 'customer' && !currentPath.startsWith('/customer')) {
+          if (currentPath.startsWith('/technician') || currentPath.startsWith('/admin')) {
+            if (kDebugMode) {
+              debugPrint('⚠️ Customer trying to access non-customer route: $currentPath');
+            }
+            return '/customer';
+          }
+        } else if (userRole == 'technician' && !currentPath.startsWith('/technician')) {
+          if (currentPath.startsWith('/customer') || currentPath.startsWith('/admin')) {
+            if (kDebugMode) {
+              debugPrint('⚠️ Technician trying to access non-technician route: $currentPath');
+            }
+            return '/technician';
+          }
+        } else if (userRole == 'admin' && !currentPath.startsWith('/admin')) {
+          if (currentPath.startsWith('/customer') || currentPath.startsWith('/technician') || currentPath.startsWith('/cashier')) {
+            if (kDebugMode) {
+              debugPrint('⚠️ Admin trying to access non-admin route: $currentPath');
+            }
+            return '/admin';
+          }
+        } else if (userRole == 'cashier' && !currentPath.startsWith('/cashier')) {
+          if (currentPath.startsWith('/customer') || currentPath.startsWith('/technician') || currentPath.startsWith('/admin')) {
+            if (kDebugMode) {
+              debugPrint('⚠️ Cashier trying to access non-cashier route: $currentPath');
+            }
+            return '/cashier';
           }
         }
       }
@@ -199,6 +243,29 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'offers',
             builder: (context, state) => const AdminOffersPage(),
+          ),
+        ],
+      ),
+      
+      // Cashier Routes
+      GoRoute(
+        path: '/cashier',
+        builder: (context, state) => const CashierDashboard(),
+        routes: [
+          GoRoute(
+            path: 'payments',
+            builder: (context, state) => const CashierPaymentsPage(),
+          ),
+          GoRoute(
+            path: 'payment/:bookingId',
+            builder: (context, state) {
+              final bookingId = state.pathParameters['bookingId']!;
+              return CashierPaymentDetailsPage(bookingId: bookingId);
+            },
+          ),
+          GoRoute(
+            path: 'profile',
+            builder: (context, state) => const CashierProfilePage(),
           ),
         ],
       ),

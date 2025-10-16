@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:car_maintenance_system_new/core/providers/auth_provider.dart';
 import 'package:car_maintenance_system_new/core/providers/booking_provider.dart';
 import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
+import 'package:car_maintenance_system_new/features/shared/presentation/pages/settings_page.dart';
 import 'package:car_maintenance_system_new/features/admin/presentation/widgets/admin_stats.dart';
 import 'package:car_maintenance_system_new/features/admin/presentation/widgets/recent_activities.dart';
 
@@ -33,7 +34,13 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   @override
   void dispose() {
     // Stop listening when dashboard is disposed
-    ref.read(bookingProvider.notifier).stopListening();
+    // Wrap in try-catch to handle cases where widget is already disposed during logout
+    try {
+      ref.read(bookingProvider.notifier).stopListening();
+    } catch (e) {
+      // Widget was already disposed, safe to ignore
+      debugPrint('Dashboard disposed, listener cleanup skipped: $e');
+    }
     super.dispose();
   }
 
@@ -49,6 +56,15 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           style: TextStyle(fontSize: 18.sp),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.settings, size: 22.sp),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsPage()),
+              );
+            },
+          ),
           IconButton(
             icon: Icon(Icons.local_offer, size: 22.sp),
             tooltip: 'Manage Offers',
@@ -72,7 +88,35 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
           IconButton(
             icon: Icon(Icons.logout, size: 22.sp),
             onPressed: () {
-              ref.read(authProvider.notifier).signOut();
+              showDialog(
+                context: context,
+                builder: (dialogContext) => AlertDialog(
+                  title: const Text('Sign Out'),
+                  content: const Text('Are you sure you want to sign out?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(dialogContext),
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        // Close dialog first
+                        Navigator.pop(dialogContext);
+                        // Small delay to ensure dialog is fully closed
+                        await Future.delayed(const Duration(milliseconds: 100));
+                        // Then sign out - router will handle navigation
+                        if (mounted) {
+                          await ref.read(authProvider.notifier).signOut();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                      ),
+                      child: const Text('Sign Out'),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ],

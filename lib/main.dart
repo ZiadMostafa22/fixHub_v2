@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:car_maintenance_system_new/core/theme/app_theme.dart';
 import 'package:car_maintenance_system_new/core/router/app_router.dart';
+import 'package:car_maintenance_system_new/core/providers/theme_provider.dart';
 import 'package:car_maintenance_system_new/firebase_options.dart';
 
 void main() async {
@@ -17,7 +18,7 @@ void main() async {
     debugPrint('✅ Firebase initialized successfully!');
   } catch (e) {
     debugPrint('❌ Firebase initialization error: $e');
-  }
+  } 
   
   runApp(
     const ProviderScope(
@@ -32,6 +33,7 @@ class CarMaintenanceApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeModeProvider);
     
     return ScreenUtilInit(
       // Design size based on standard mobile dimensions (adjust based on your design)
@@ -43,7 +45,7 @@ class CarMaintenanceApp extends ConsumerWidget {
           title: 'Car Maintenance System',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeMode.system,
+          themeMode: themeMode,
           routerConfig: router,
           debugShowCheckedModeBanner: false,
         );

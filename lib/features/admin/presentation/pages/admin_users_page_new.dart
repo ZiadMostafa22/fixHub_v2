@@ -533,6 +533,8 @@ class _UserDetailsSheetState extends ConsumerState<UserDetailsSheet> {
         return 'Confirmed';
       case BookingStatus.inProgress:
         return 'In Progress';
+      case BookingStatus.completedPendingPayment:
+        return 'Awaiting Payment';
       case BookingStatus.completed:
         return 'Completed';
       case BookingStatus.cancelled:
@@ -548,6 +550,8 @@ class _UserDetailsSheetState extends ConsumerState<UserDetailsSheet> {
         return Colors.blue;
       case BookingStatus.inProgress:
         return Colors.purple;
+      case BookingStatus.completedPendingPayment:
+        return Colors.deepPurple;
       case BookingStatus.completed:
         return Colors.green;
       case BookingStatus.cancelled:
@@ -563,6 +567,8 @@ class _UserDetailsSheetState extends ConsumerState<UserDetailsSheet> {
         return Icons.check_circle_outline;
       case BookingStatus.inProgress:
         return Icons.build;
+      case BookingStatus.completedPendingPayment:
+        return Icons.payment;
       case BookingStatus.completed:
         return Icons.check_circle;
       case BookingStatus.cancelled:

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:intl/intl.dart';
 import 'package:car_maintenance_system_new/core/providers/booking_provider.dart';
 import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
@@ -13,11 +14,11 @@ class UpcomingAppointments extends ConsumerWidget {
     final bookingState = ref.watch(bookingProvider);
     final carState = ref.watch(carProvider);
     
-    // Filter upcoming bookings (pending, confirmed, in_progress)
+    // Filter upcoming bookings (pending, confirmed only - not inProgress)
     final upcomingBookings = bookingState.bookings.where((booking) {
-      return booking.status == BookingStatus.pending ||
-             booking.status == BookingStatus.confirmed ||
-             booking.status == BookingStatus.inProgress;
+      return (booking.status == BookingStatus.pending ||
+              booking.status == BookingStatus.confirmed) &&
+             booking.scheduledDate.isAfter(DateTime.now());
     }).toList();
     
     // Sort by scheduled date
@@ -26,35 +27,9 @@ class UpcomingAppointments extends ConsumerWidget {
     // Show only next 3 upcoming
     final displayBookings = upcomingBookings.take(3).toList();
 
+    // Don't show the section at all if no upcoming appointments
     if (displayBookings.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            children: [
-              Icon(
-                Icons.calendar_today,
-                size: 48,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'No upcoming appointments',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Book a service to get started',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[500],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return const SizedBox.shrink();
     }
 
     return Column(
@@ -65,78 +40,190 @@ class UpcomingAppointments extends ConsumerWidget {
         final carName = car != null ? '${car.make} ${car.model}' : 'Unknown Car';
         
         return Card(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: EdgeInsets.only(bottom: 12.h),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
+            padding: EdgeInsets.all(16.w),
+            child: Column(
               children: [
-                Container(
-                  width: 4,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(booking.status),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _getMaintenanceTypeName(booking.maintenanceType),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Container(
+                      width: 4.w,
+                      height: 60.h,
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(booking.status),
+                        borderRadius: BorderRadius.circular(2.r),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        carName,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey[600],
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
+                    ),
+                    SizedBox(width: 16.w),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.calendar_today,
-                            size: 16,
-                            color: Colors.grey[500],
-                          ),
-                          const SizedBox(width: 4),
                           Text(
-                            '${DateFormat('MMM dd, yyyy').format(booking.scheduledDate)} at ${booking.timeSlot}',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Colors.grey[500],
+                            _getMaintenanceTypeName(booking.maintenanceType),
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15.sp,
                             ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 4.h),
+                          Text(
+                            carName,
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[600],
+                              fontSize: 13.sp,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 8.h),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                size: 14.sp,
+                                color: Colors.grey[500],
+                              ),
+                              SizedBox(width: 4.w),
+                              Text(
+                                '${DateFormat('MMM dd, yyyy').format(booking.scheduledDate)} at ${booking.timeSlot}',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Colors.grey[500],
+                                  fontSize: 11.sp,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    Container(
+                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(booking.status).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12.r),
+                      ),
+                      child: Text(
+                        _getStatusName(booking.status),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: _getStatusColor(booking.status),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11.sp,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(booking.status).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _getStatusName(booking.status),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: _getStatusColor(booking.status),
-                      fontWeight: FontWeight.bold,
+                
+                // Cancel button (only for pending and confirmed bookings)
+                if (booking.status == BookingStatus.pending || 
+                    booking.status == BookingStatus.confirmed) ...[
+                  SizedBox(height: 12.h),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showCancelDialog(context, ref, booking),
+                      icon: Icon(Icons.cancel_outlined, size: 16.sp),
+                      label: const Text('Cancel Appointment'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
         );
       }).toList(),
+    );
+  }
+
+  void _showCancelDialog(BuildContext context, WidgetRef ref, BookingModel booking) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cancel Appointment'),
+        content: const Text(
+          'Are you sure you want to cancel this appointment? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Keep Appointment'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              // Close confirmation dialog first
+              Navigator.pop(dialogContext);
+              
+              // Show simple loading indicator
+              if (!context.mounted) return;
+              
+              // Use a simple loading overlay instead of dialog
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (ctx) => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+              
+              try {
+                // Quick cancellation with immediate UI update
+                final success = await ref.read(bookingProvider.notifier).cancelBooking(
+                  booking.id,
+                );
+                
+                // Close loading immediately
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
+                
+                // Show result immediately
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        success 
+                          ? 'Appointment cancelled successfully'
+                          : 'Failed to cancel appointment. Please try again.',
+                      ),
+                      backgroundColor: success ? Colors.green : Colors.red,
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } catch (e) {
+                print('❌ Cancellation error: $e');
+                
+                // Close loading immediately
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                }
+                
+                // Show error
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error cancelling appointment: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Cancel Appointment'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -161,6 +248,8 @@ class UpcomingAppointments extends ConsumerWidget {
         return 'Confirmed';
       case BookingStatus.inProgress:
         return 'In Progress';
+      case BookingStatus.completedPendingPayment:
+        return 'Awaiting Payment';
       case BookingStatus.completed:
         return 'Completed';
       case BookingStatus.cancelled:
@@ -176,6 +265,8 @@ class UpcomingAppointments extends ConsumerWidget {
         return Colors.orange;
       case BookingStatus.inProgress:
         return Colors.blue;
+      case BookingStatus.completedPendingPayment:
+        return Colors.deepPurple;
       case BookingStatus.completed:
         return Colors.green;
       case BookingStatus.cancelled:

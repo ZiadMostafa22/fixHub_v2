@@ -121,20 +121,23 @@ class _CustomerCarsPageState extends ConsumerState<CustomerCarsPage> {
                           ],
                           onSelected: (value) async {
                             if (value == 'delete') {
+                              // Capture the ScaffoldMessenger before showing dialog
+                              final scaffoldMessenger = ScaffoldMessenger.of(context);
+                              
                               final confirm = await showDialog<bool>(
                                 context: context,
-                                builder: (context) => AlertDialog(
+                                builder: (dialogContext) => AlertDialog(
                                   title: const Text('Delete Car'),
                                   content: const Text(
                                     'Are you sure you want to delete this car?',
                                   ),
                                   actions: [
                                     TextButton(
-                                      onPressed: () => Navigator.pop(context, false),
+                                      onPressed: () => Navigator.pop(dialogContext, false),
                                       child: const Text('Cancel'),
                                     ),
                                     TextButton(
-                                      onPressed: () => Navigator.pop(context, true),
+                                      onPressed: () => Navigator.pop(dialogContext, true),
                                       child: const Text(
                                         'Delete',
                                         style: TextStyle(color: Colors.red),
@@ -149,8 +152,8 @@ class _CustomerCarsPageState extends ConsumerState<CustomerCarsPage> {
                                     .read(carProvider.notifier)
                                     .deleteCar(car.id);
                                 
-                                // ignore: use_build_context_synchronously
-                                ScaffoldMessenger.of(context).showSnackBar(
+                                // Use the captured ScaffoldMessenger instead of context
+                                scaffoldMessenger.showSnackBar(
                                   SnackBar(
                                     content: Text(
                                       success
