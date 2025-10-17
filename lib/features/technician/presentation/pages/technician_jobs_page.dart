@@ -1,300 +1,307 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-import 'package:go_router/go_router.dart';
-import 'package:car_maintenance_system_new/core/providers/auth_provider.dart';
-import 'package:car_maintenance_system_new/core/providers/booking_provider.dart';
-import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
-import 'package:car_maintenance_system_new/core/models/booking_model.dart';
-import 'package:car_maintenance_system_new/core/widgets/unified_filter_widget.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-class TechnicianJobsPage extends ConsumerStatefulWidget {
+class TechnicianJobsPage extends StatelessWidget {
   const TechnicianJobsPage({super.key});
 
   @override
-  ConsumerState<TechnicianJobsPage> createState() => _TechnicianJobsPageState();
-}
-
-class _TechnicianJobsPageState extends ConsumerState<TechnicianJobsPage> {
-  String _filterStatus = 'all';
-  DateTimeRange? _dateRange;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = ref.read(authProvider).user;
-      if (user != null) {
-        // Start real-time listener for bookings
-        ref.read(bookingProvider.notifier).startListening(user.id, role: 'technician');
-        ref.read(carProvider.notifier).loadCars('');
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    // Stop listening when page is disposed
-    // Wrap in try-catch to handle cases where widget is already disposed during logout
-    try {
-      ref.read(bookingProvider.notifier).stopListening();
-    } catch (e) {
-      // Widget was already disposed, safe to ignore
-      debugPrint('Jobs page disposed, listener cleanup skipped: $e');
-    }
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final bookingState = ref.watch(bookingProvider);
-    final carState = ref.watch(carProvider);
-    
-    // Filter bookings - show ALL jobs to ALL technicians (no assignment filter)
-    final filteredBookings = bookingState.bookings.where((booking) {
-      // Show ALL jobs regardless of assignment - any technician can see any job
-      // This allows technicians to see all available work and collaborate
-      
-      // Apply status filter
-      if (_filterStatus == 'all') return true;
-      if (_filterStatus == 'pending') return booking.status == BookingStatus.pending || booking.status == BookingStatus.confirmed;
-      if (_filterStatus == 'in_progress') return booking.status == BookingStatus.inProgress;
-      if (_filterStatus == 'completed') return booking.status == BookingStatus.completed;
-      return true;
-    }).toList();
-    
-    // Sort by scheduled date
-    filteredBookings.sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+    // Demo data for jobs
+    final List<Map<String, dynamic>> demoJobs = [
+      {
+        'id': '1',
+        'customerName': 'Ahmed Mohamed',
+        'carMake': 'Toyota',
+        'carModel': 'Camry',
+        'serviceType': 'Oil Change',
+        'status': 'in_progress',
+        'scheduledDate': '2024-03-15',
+        'scheduledTime': '10:00 AM',
+        'estimatedDuration': '1 hour',
+        'priority': 'normal',
+      },
+      {
+        'id': '2',
+        'customerName': 'Omar Ibrahim',
+        'carMake': 'Honda',
+        'carModel': 'Civic',
+        'serviceType': 'Brake Service',
+        'status': 'pending',
+        'scheduledDate': '2024-03-15',
+        'scheduledTime': '2:00 PM',
+        'estimatedDuration': '2 hours',
+        'priority': 'high',
+      },
+      {
+        'id': '3',
+        'customerName': 'Mohamed Ali',
+        'carMake': 'Nissan',
+        'carModel': 'Altima',
+        'serviceType': 'Engine Check',
+        'status': 'completed',
+        'scheduledDate': '2024-03-14',
+        'scheduledTime': '9:00 AM',
+        'estimatedDuration': '1.5 hours',
+        'priority': 'normal',
+      },
+    ];
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Jobs'),
-      ),
-      body: Column(
-        children: [
-          // Unified Filter Widget
-          UnifiedFilterWidget(
-            selectedFilter: _filterStatus,
-            dateRange: _dateRange,
-            filterOptions: FilterOptions.technicianJobs,
-            onFilterChanged: (value) {
-              setState(() {
-                _filterStatus = value;
-              });
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.filter_list),
+            onPressed: () {
+              // Filter jobs
             },
-            onDateRangeChanged: (range) {
-              setState(() {
-                _dateRange = range;
-              });
-            },
-            showDateFilter: true,
-            showStatusFilter: true,
           ),
-          // Content
-          Expanded(
-            child: bookingState.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : filteredBookings.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+        ],
+      ),
+      body: ListView.builder(
+        padding: EdgeInsets.all(16.w),
+        itemCount: demoJobs.length,
+        itemBuilder: (context, index) {
+          final job = demoJobs[index];
+          return Card(
+            margin: EdgeInsets.only(bottom: 16.h),
+            child: Padding(
+              padding: EdgeInsets.all(16.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      const Icon(
-                        Icons.work,
-                        size: 64,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _filterStatus == 'all' ? 'No jobs assigned' : 'No $_filterStatus jobs',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey,
+                      Container(
+                        width: 50.w,
+                        height: 50.w,
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(job['status']).withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                        child: Icon(
+                          _getStatusIcon(job['status']),
+                          size: 24.sp,
+                          color: _getStatusColor(job['status']),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Your assigned jobs will appear here',
-                        style: TextStyle(
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filteredBookings.length,
-                  itemBuilder: (context, index) {
-                    final booking = filteredBookings[index];
-                    
-                    // Get car info
-                    final car = carState.cars.where((c) => c.id == booking.carId).firstOrNull;
-                    final carName = car != null ? '${car.make} ${car.model} (${car.year})' : 'Unknown Car';
-                    
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
+                      SizedBox(width: 16.w),
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    _getMaintenanceTypeName(booking.maintenanceType),
-                                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                  decoration: BoxDecoration(
-                                    color: _getStatusColor(booking.status).withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: Text(
-                                    _getStatusName(booking.status),
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: _getStatusColor(booking.status),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                const Icon(Icons.directions_car, size: 16),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    carName,
-                                    style: Theme.of(context).textTheme.bodyMedium,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                const Icon(Icons.calendar_today, size: 16),
-                                const SizedBox(width: 8),
-                                Text(
-                                  DateFormat('MMM dd, yyyy').format(booking.scheduledDate),
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                                const SizedBox(width: 16),
-                                const Icon(Icons.access_time, size: 16),
-                                const SizedBox(width: 8),
-                                Text(
-                                  booking.timeSlot,
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                ),
-                              ],
-                            ),
-                            if (booking.description != null && booking.description!.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                booking.description!,
-                                style: Theme.of(context).textTheme.bodySmall,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                            Text(
+                              job['serviceType'],
+                              style: TextStyle(
+                                fontSize: 18.sp,
+                                fontWeight: FontWeight.bold,
                               ),
-                            ],
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: () => context.go('/technician/job-details/${booking.id}'),
-                                icon: Icon(
-                                  booking.status == BookingStatus.inProgress 
-                                      ? Icons.build 
-                                      : booking.status == BookingStatus.completed
-                                          ? Icons.check_circle
-                                          : Icons.play_arrow,
-                                ),
-                                label: Text(
-                                  booking.status == BookingStatus.inProgress 
-                                      ? 'Continue Work & Complete Job' 
-                                      : booking.status == BookingStatus.completed
-                                          ? 'View Invoice'
-                                          : 'Start Job & Add Invoice',
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: booking.status == BookingStatus.inProgress 
-                                      ? Colors.blue 
-                                      : booking.status == BookingStatus.completed
-                                          ? Colors.green
-                                          : Theme.of(context).primaryColor,
-                                  padding: const EdgeInsets.all(16),
-                                ),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              '${job['carMake']} ${job['carModel']}',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            SizedBox(height: 4.h),
+                            Text(
+                              'Customer: ${job['customerName']}',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                color: Colors.grey[600],
                               ),
                             ),
                           ],
                         ),
                       ),
-                    );
-                  },
-                ),
-          ),
-        ],
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(job['status']).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            child: Text(
+                              _getStatusText(job['status']),
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: _getStatusColor(job['status']),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 4.h),
+                          if (job['priority'] == 'high')
+                            Container(
+                              padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+                              decoration: BoxDecoration(
+                                color: Colors.red.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8.r),
+                              ),
+                              child: Text(
+                                'HIGH',
+                                style: TextStyle(
+                                  fontSize: 10.sp,
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 16.h),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Scheduled',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                            SizedBox(height: 2.h),
+                            Text(
+                              '${job['scheduledDate']} at ${job['scheduledTime']}',
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Duration',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                            SizedBox(height: 2.h),
+                            Text(
+                              job['estimatedDuration'],
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (job['status'] == 'pending' || job['status'] == 'in_progress') ...[
+                    SizedBox(height: 16.h),
+                    Row(
+                      children: [
+                        if (job['status'] == 'pending')
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                // Start job
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Start Job'),
+                            ),
+                          ),
+                        if (job['status'] == 'in_progress') ...[
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                // Pause job
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.orange,
+                                side: const BorderSide(color: Colors.orange),
+                              ),
+                              child: const Text('Pause'),
+                            ),
+                          ),
+                          SizedBox(width: 8.w),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: () {
+                                // Complete job
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                              ),
+                              child: const Text('Complete'),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  String _getMaintenanceTypeName(MaintenanceType type) {
-    switch (type) {
-      case MaintenanceType.regular:
-        return 'Regular Maintenance';
-      case MaintenanceType.inspection:
-        return 'Inspection';
-      case MaintenanceType.repair:
-        return 'Repair Service';
-      case MaintenanceType.emergency:
-        return 'Emergency Service';
-    }
-  }
-
-  String _getStatusName(BookingStatus status) {
+  Color _getStatusColor(String status) {
     switch (status) {
-      case BookingStatus.pending:
-        return 'Pending';
-      case BookingStatus.confirmed:
-        return 'Confirmed';
-      case BookingStatus.inProgress:
-        return 'In Progress';
-      case BookingStatus.completedPendingPayment:
-        return 'Awaiting Payment';
-      case BookingStatus.completed:
-        return 'Completed';
-      case BookingStatus.cancelled:
-        return 'Cancelled';
-    }
-  }
-
-  Color _getStatusColor(BookingStatus status) {
-    switch (status) {
-      case BookingStatus.pending:
-        return Colors.orange;
-      case BookingStatus.confirmed:
-        return Colors.green;
-      case BookingStatus.inProgress:
+      case 'pending':
         return Colors.blue;
-      case BookingStatus.completedPendingPayment:
-        return Colors.deepPurple;
-      case BookingStatus.completed:
+      case 'in_progress':
+        return Colors.orange;
+      case 'completed':
         return Colors.green;
-      case BookingStatus.cancelled:
+      case 'cancelled':
         return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getStatusIcon(String status) {
+    switch (status) {
+      case 'pending':
+        return Icons.schedule;
+      case 'in_progress':
+        return Icons.build;
+      case 'completed':
+        return Icons.done_all;
+      case 'cancelled':
+        return Icons.cancel;
+      default:
+        return Icons.help;
+    }
+  }
+
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'pending':
+        return 'Pending';
+      case 'in_progress':
+        return 'In Progress';
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return 'Unknown';
     }
   }
 }

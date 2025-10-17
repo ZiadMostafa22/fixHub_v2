@@ -1,55 +1,67 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-import 'package:car_maintenance_system_new/core/providers/booking_provider.dart';
-import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
-import 'package:car_maintenance_system_new/core/models/booking_model.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-class RecentBookings extends ConsumerWidget {
+class RecentBookings extends StatelessWidget {
   const RecentBookings({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final bookingState = ref.watch(bookingProvider);
-    final carState = ref.watch(carProvider);
-    
-    // Filter completed bookings only
-    final completedBookings = bookingState.bookings.where((booking) {
-      return booking.status == BookingStatus.completed;
-    }).toList();
-    
-    // Sort by completed date (most recent first)
-    completedBookings.sort((a, b) {
-      final aDate = a.completedAt ?? a.updatedAt;
-      final bDate = b.completedAt ?? b.updatedAt;
-      return bDate.compareTo(aDate);
-    });
-    
-    // Show only last 3 completed
-    final displayBookings = completedBookings.take(3).toList();
+  Widget build(BuildContext context) {
+    // Demo data for recent bookings
+    final List<Map<String, dynamic>> recentBookings = [
+      {
+        'id': '1',
+        'serviceType': 'Oil Change',
+        'carMake': 'Toyota',
+        'carModel': 'Camry',
+        'date': '2024-03-05',
+        'status': 'completed',
+        'price': '150',
+      },
+      {
+        'id': '2',
+        'serviceType': 'Brake Service',
+        'carMake': 'Honda',
+        'carModel': 'Civic',
+        'date': '2024-02-20',
+        'status': 'completed',
+        'price': '300',
+      },
+      {
+        'id': '3',
+        'serviceType': 'Engine Check',
+        'carMake': 'Toyota',
+        'carModel': 'Camry',
+        'date': '2024-01-15',
+        'status': 'completed',
+        'price': '200',
+      },
+    ];
 
-    if (displayBookings.isEmpty) {
+    if (recentBookings.isEmpty) {
       return Card(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: EdgeInsets.all(24.w),
           child: Column(
             children: [
               Icon(
                 Icons.receipt_long,
-                size: 48,
+                size: 48.sp,
                 color: Colors.grey[400],
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16.h),
               Text(
                 'No recent bookings',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                style: TextStyle(
+                  fontSize: 18.sp,
+                  fontWeight: FontWeight.w500,
                   color: Colors.grey[600],
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8.h),
               Text(
                 'Your service history will appear here',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                style: TextStyle(
+                  fontSize: 14.sp,
                   color: Colors.grey[500],
                 ),
               ),
@@ -60,16 +72,11 @@ class RecentBookings extends ConsumerWidget {
     }
 
     return Column(
-      children: displayBookings.map((booking) {
-        // Get car info
-        final car = carState.cars.where((c) => c.id == booking.carId).firstOrNull;
-        
-        final carName = car != null ? '${car.make} ${car.model}' : 'Unknown Car';
-        
+      children: recentBookings.map((booking) {
         return Card(
-          margin: const EdgeInsets.only(bottom: 12),
+          margin: EdgeInsets.only(bottom: 12.h),
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -78,23 +85,25 @@ class RecentBookings extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        _getMaintenanceTypeName(booking.maintenanceType),
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        booking['serviceType'],
+                        style: TextStyle(
+                          fontSize: 16.sp,
                           fontWeight: FontWeight.bold,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8.w),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
                       decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        color: Colors.green.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12.r),
                       ),
                       child: Text(
                         'Completed',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        style: TextStyle(
+                          fontSize: 12.sp,
                           color: Colors.green,
                           fontWeight: FontWeight.bold,
                         ),
@@ -102,15 +111,16 @@ class RecentBookings extends ConsumerWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8.h),
                 Text(
-                  carName,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  '${booking['carMake']} ${booking['carModel']}',
+                  style: TextStyle(
+                    fontSize: 14.sp,
                     color: Colors.grey[600],
                   ),
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8.h),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -118,24 +128,27 @@ class RecentBookings extends ConsumerWidget {
                       children: [
                         Icon(
                           Icons.calendar_today,
-                          size: 16,
+                          size: 16.sp,
                           color: Colors.grey[500],
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: 4.w),
                         Text(
-                          DateFormat('MMM dd, yyyy').format(booking.completedAt ?? booking.updatedAt),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          booking['date'],
+                          style: TextStyle(
+                            fontSize: 12.sp,
                             color: Colors.grey[500],
                           ),
                         ),
                       ],
                     ),
-                    if (booking.description != null && booking.description!.isNotEmpty)
-                      Icon(
-                        Icons.info_outline,
-                        size: 16,
+                    Text(
+                      '${booking['price']} EGP',
+                      style: TextStyle(
+                        fontSize: 14.sp,
+                        fontWeight: FontWeight.bold,
                         color: Theme.of(context).primaryColor,
                       ),
+                    ),
                   ],
                 ),
               ],
@@ -144,18 +157,5 @@ class RecentBookings extends ConsumerWidget {
         );
       }).toList(),
     );
-  }
-
-  String _getMaintenanceTypeName(MaintenanceType type) {
-    switch (type) {
-      case MaintenanceType.regular:
-        return 'Regular Maintenance';
-      case MaintenanceType.inspection:
-        return 'Inspection';
-      case MaintenanceType.repair:
-        return 'Repair Service';
-      case MaintenanceType.emergency:
-        return 'Emergency Service';
-    }
   }
 }

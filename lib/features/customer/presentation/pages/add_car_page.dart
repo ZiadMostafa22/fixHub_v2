@@ -1,24 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:car_maintenance_system_new/core/providers/auth_provider.dart';
-import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
-import 'package:car_maintenance_system_new/core/models/car_model.dart';
 
-class AddCarPage extends ConsumerStatefulWidget {
+class AddCarPage extends StatefulWidget {
   const AddCarPage({super.key});
 
   @override
-  ConsumerState<AddCarPage> createState() => _AddCarPageState();
+  State<AddCarPage> createState() => _AddCarPageState();
 }
 
-class _AddCarPageState extends ConsumerState<AddCarPage> {
+class _AddCarPageState extends State<AddCarPage> {
   final _formKey = GlobalKey<FormState>();
   final _makeController = TextEditingController();
   final _modelController = TextEditingController();
   final _yearController = TextEditingController();
-  final _colorController = TextEditingController();
   final _plateNumberController = TextEditingController();
+  final _colorController = TextEditingController();
+  final _mileageController = TextEditingController();
   final _vinController = TextEditingController();
 
   @override
@@ -26,204 +24,284 @@ class _AddCarPageState extends ConsumerState<AddCarPage> {
     _makeController.dispose();
     _modelController.dispose();
     _yearController.dispose();
-    _colorController.dispose();
     _plateNumberController.dispose();
+    _colorController.dispose();
+    _mileageController.dispose();
     _vinController.dispose();
     super.dispose();
   }
 
-  Future<void> _submitCar() async {
+  void _handleSubmit() {
     if (_formKey.currentState!.validate()) {
-      final user = ref.read(authProvider).user;
-      if (user == null) return;
-
-      final car = CarModel(
-        id: '',
-        userId: user.id,
-        make: _makeController.text.trim(),
-        model: _modelController.text.trim(),
-        year: int.parse(_yearController.text.trim()),
-        color: _colorController.text.trim(),
-        licensePlate: _plateNumberController.text.trim(),
-        type: CarType.sedan, // Default type, can be enhanced with a dropdown
-        vin: _vinController.text.trim().isEmpty ? null : _vinController.text.trim(),
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
+      // Show success message
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Car added successfully!'),
+          backgroundColor: Colors.green,
+        ),
       );
-
-      final success = await ref.read(carProvider.notifier).addCar(car);
-
-      if (mounted) {
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Car added successfully!')),
-          );
-          context.pop();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(ref.read(carProvider).error ?? 'Failed to add car'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
+      // Navigate back
+      context.go('/customer/cars');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final carState = ref.watch(carProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add New Car'),
+        actions: [
+          TextButton(
+            onPressed: _handleSubmit,
+            child: const Text(
+              'Save',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(16.w),
         child: Form(
           key: _formKey,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Vehicle Information',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
+              // Car Image Placeholder
+              Container(
+                width: double.infinity,
+                height: 200.h,
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(12.r),
+                  border: Border.all(
+                    color: Colors.grey[300]!,
+                    style: BorderStyle.solid,
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.add_photo_alternate,
+                      size: 50.sp,
+                      color: Colors.grey[400],
+                    ),
+                    SizedBox(height: 8.h),
+                    Text(
+                      'Add Car Photo',
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    SizedBox(height: 4.h),
+                    Text(
+                      'Tap to add image',
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        color: Colors.grey[500],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              SizedBox(height: 24.h),
+              
+              // Car Details Form
+              Text(
+                'Car Details',
+                style: TextStyle(
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              
+              SizedBox(height: 16.h),
+              
+              // Make and Model Row
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _makeController,
+                      decoration: InputDecoration(
+                        labelText: 'Make',
+                        hintText: 'e.g., Toyota',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _makeController,
-                        decoration: const InputDecoration(
-                          labelText: 'Make *',
-                          hintText: 'e.g., Toyota, Honda, Ford',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                          isDense: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter car make';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  SizedBox(width: 16.w),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _modelController,
+                      decoration: InputDecoration(
+                        labelText: 'Model',
+                        hintText: 'e.g., Camry',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter the car make';
-                          }
-                          return null;
-                        },
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _modelController,
-                        decoration: const InputDecoration(
-                          labelText: 'Model *',
-                          hintText: 'e.g., Camry, Accord, F-150',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                          isDense: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter car model';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              
+              SizedBox(height: 16.h),
+              
+              // Year and Plate Number Row
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _yearController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Year',
+                        hintText: 'e.g., 2020',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter the car model';
-                          }
-                          return null;
-                        },
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _yearController,
-                        decoration: const InputDecoration(
-                          labelText: 'Year *',
-                          hintText: 'e.g., 2020',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                          isDense: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter year';
+                        }
+                        if (int.tryParse(value) == null) {
+                          return 'Please enter valid year';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  SizedBox(width: 16.w),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _plateNumberController,
+                      decoration: InputDecoration(
+                        labelText: 'Plate Number',
+                        hintText: 'e.g., ABC-123',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter the car year';
-                          }
-                          final year = int.tryParse(value);
-                          if (year == null || year < 1900 || year > DateTime.now().year + 1) {
-                            return 'Please enter a valid year';
-                          }
-                          return null;
-                        },
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _colorController,
-                        decoration: const InputDecoration(
-                          labelText: 'Color *',
-                          hintText: 'e.g., Red, Blue, Black',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                          isDense: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter plate number';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              
+              SizedBox(height: 16.h),
+              
+              // Color and Mileage Row
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _colorController,
+                      decoration: InputDecoration(
+                        labelText: 'Color',
+                        hintText: 'e.g., White',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter the car color';
-                          }
-                          return null;
-                        },
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _plateNumberController,
-                        decoration: const InputDecoration(
-                          labelText: 'Plate Number *',
-                          hintText: 'e.g., ABC-1234',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                          isDense: true,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter color';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  SizedBox(width: 16.w),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _mileageController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Mileage (km)',
+                        hintText: 'e.g., 45000',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8.r),
                         ),
-                        textCapitalization: TextCapitalization.characters,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter the plate number';
-                          }
-                          return null;
-                        },
                       ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _vinController,
-                        decoration: const InputDecoration(
-                          labelText: 'VIN (Optional)',
-                          hintText: 'Vehicle Identification Number',
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                          isDense: true,
-                        ),
-                        textCapitalization: TextCapitalization.characters,
-                      ),
-                    ],
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Please enter mileage';
+                        }
+                        if (int.tryParse(value) == null) {
+                          return 'Please enter valid mileage';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              
+              SizedBox(height: 16.h),
+              
+              // VIN Number
+              TextFormField(
+                controller: _vinController,
+                decoration: InputDecoration(
+                  labelText: 'VIN Number (Optional)',
+                  hintText: 'Vehicle Identification Number',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: carState.isLoading ? null : _submitCar,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.all(14),
+              
+              SizedBox(height: 32.h),
+              
+              // Submit Button
+              SizedBox(
+                width: double.infinity,
+                height: 48.h,
+                child: ElevatedButton(
+                  onPressed: _handleSubmit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                  ),
+                  child: Text(
+                    'Add Car',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
-                child: carState.isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text(
-                        'Add Car',
-                        style: TextStyle(fontSize: 16),
-                      ),
               ),
-              const SizedBox(height: 16), // Bottom padding
             ],
           ),
         ),
@@ -231,4 +309,3 @@ class _AddCarPageState extends ConsumerState<AddCarPage> {
     );
   }
 }
-

@@ -1,204 +1,48 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:car_maintenance_system_new/core/providers/auth_provider.dart';
-import 'package:car_maintenance_system_new/core/providers/booking_provider.dart';
-import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
-import 'package:car_maintenance_system_new/features/shared/presentation/pages/settings_page.dart';
+import 'package:car_maintenance_system_new/features/customer/presentation/pages/customer_cars_page.dart';
+import 'package:car_maintenance_system_new/features/customer/presentation/pages/customer_bookings_page.dart';
+import 'package:car_maintenance_system_new/features/customer/presentation/pages/customer_history_page.dart';
+import 'package:car_maintenance_system_new/features/customer/presentation/pages/customer_offers_page.dart';
+import 'package:car_maintenance_system_new/features/customer/presentation/pages/customer_profile_page.dart';
 import 'package:car_maintenance_system_new/features/customer/presentation/widgets/quick_actions.dart';
 import 'package:car_maintenance_system_new/features/customer/presentation/widgets/upcoming_appointments.dart';
 import 'package:car_maintenance_system_new/features/customer/presentation/widgets/active_services.dart';
 import 'package:car_maintenance_system_new/features/customer/presentation/widgets/missed_appointments.dart';
-import 'package:car_maintenance_system_new/core/models/booking_model.dart';
 
-class CustomerDashboard extends ConsumerStatefulWidget {
+class CustomerDashboard extends StatefulWidget {
   const CustomerDashboard({super.key});
 
   @override
-  ConsumerState<CustomerDashboard> createState() => _CustomerDashboardState();
+  State<CustomerDashboard> createState() => _CustomerDashboardState();
 }
 
-class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
-  @override
-  void initState() {
-    super.initState();
-    // Start real-time listeners for bookings and load cars when dashboard opens
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = ref.read(authProvider).user;
-      if (user != null) {
-        // Start real-time listener for bookings
-        ref.read(bookingProvider.notifier).startListening(user.id);
-        // Load cars (one-time)
-        ref.read(carProvider.notifier).loadCars(user.id);
-      }
-    });
-  }
+class _CustomerDashboardState extends State<CustomerDashboard> {
+  int _selectedIndex = 0;
 
-  @override
-  void dispose() {
-    // Stop listening when dashboard is disposed
-    // Wrap in try-catch to handle cases where widget is already disposed during logout
-    try {
-      ref.read(bookingProvider.notifier).stopListening();
-    } catch (e) {
-      // Widget was already disposed, safe to ignore
-      debugPrint('Dashboard disposed, listener cleanup skipped: $e');
-    }
-    super.dispose();
-  }
-
-  Future<void> _refreshData() async {
-    final user = ref.read(authProvider).user;
-    if (user != null) {
-      await ref.read(bookingProvider.notifier).loadBookings(user.id);
-      await ref.read(carProvider.notifier).loadCars(user.id);
-    }
-  }
+  final List<Widget> _pages = [
+    const _DashboardHome(),
+    const CustomerCarsPage(),
+    const CustomerBookingsPage(),
+    const CustomerHistoryPage(),
+    const CustomerOffersPage(),
+    const CustomerProfilePage(),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-    final user = authState.user;
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Welcome, ${user?.name ?? 'Customer'}',
-          style: TextStyle(fontSize: 18.sp),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings, size: 22.sp),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsPage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.notifications, size: 22.sp),
-            onPressed: () {
-              // TODO: Navigate to notifications
-            },
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        child: SingleChildScrollView(
-        padding: EdgeInsets.all(16.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome Card
-            Card(
-              child: Padding(
-                padding: EdgeInsets.all(16.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Good ${_getGreeting()}!',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20.sp,
-                      ),
-                    ),
-                    SizedBox(height: 8.h),
-                    Text(
-                      'How can we help you with your car today?',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.grey[600],
-                        fontSize: 14.sp,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            SizedBox(height: 24.h),
-            
-            // Quick Actions
-            Text(
-              'Quick Actions',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 18.sp,
-              ),
-            ),
-            SizedBox(height: 16.h),
-            const QuickActions(),
-            
-            SizedBox(height: 24.h),
-            
-            // Upcoming Appointments (only show section if there are appointments)
-            Consumer(
-              builder: (context, ref, child) {
-                final bookingState = ref.watch(bookingProvider);
-                final upcomingBookings = bookingState.bookings.where((booking) {
-                  return (booking.status == BookingStatus.pending ||
-                          booking.status == BookingStatus.confirmed) &&
-                         booking.scheduledDate.isAfter(DateTime.now());
-                }).toList();
-                
-                if (upcomingBookings.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-                
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Upcoming Appointments',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18.sp,
-                      ),
-                    ),
-                    SizedBox(height: 16.h),
-                    const UpcomingAppointments(),
-                    SizedBox(height: 24.h),
-                  ],
-                );
-              },
-            ),
-            
-            // Missed Appointments (show if any exist)
-            const MissedAppointments(),
-            
-            // Active Services (In Progress & Pending Payment)
-            const ActiveServices(),
-            
-            SizedBox(height: 24.h),
-            
-          ],
-        ),
-        ),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages,
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: 0,
-        selectedFontSize: 12.sp,
-        unselectedFontSize: 10.sp,
-        iconSize: 24.sp,
+        currentIndex: _selectedIndex,
         onTap: (index) {
-          switch (index) {
-            case 0:
-              // Already on dashboard
-              break;
-            case 1:
-              context.go('/customer/cars');
-              break;
-            case 2:
-              context.go('/customer/offers');
-              break;
-            case 3:
-              context.go('/customer/profile');
-              break;
-          }
+          setState(() {
+            _selectedIndex = index;
+          });
         },
         items: const [
           BottomNavigationBarItem(
@@ -208,6 +52,14 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
           BottomNavigationBarItem(
             icon: Icon(Icons.directions_car),
             label: 'My Cars',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.book_online),
+            label: 'Bookings',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history),
+            label: 'History',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.local_offer),
@@ -221,15 +73,90 @@ class _CustomerDashboardState extends ConsumerState<CustomerDashboard> {
       ),
     );
   }
+}
 
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) {
-      return 'Morning';
-    } else if (hour < 17) {
-      return 'Afternoon';
-    } else {
-      return 'Evening';
-    }
+class _DashboardHome extends StatelessWidget {
+  const _DashboardHome();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Dashboard'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              context.go('/settings');
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              context.go('/login');
+            },
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Welcome Section
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).primaryColor,
+                    Theme.of(context).primaryColor.withValues(alpha: 0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Welcome back, Ahmed Mohamed!',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Manage your car maintenance efficiently',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Quick Actions
+            const QuickActions(),
+            const SizedBox(height: 24),
+            
+            // Upcoming Appointments
+            const UpcomingAppointments(),
+            const SizedBox(height: 24),
+            
+            // Active Services
+            const ActiveServices(),
+            const SizedBox(height: 24),
+            
+            // Missed Appointments
+            const MissedAppointments(),
+          ],
+        ),
+      ),
+    );
   }
 }

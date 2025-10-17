@@ -1,260 +1,145 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/intl.dart';
-import 'package:car_maintenance_system_new/core/providers/auth_provider.dart';
-import 'package:car_maintenance_system_new/core/providers/booking_provider.dart';
-import 'package:car_maintenance_system_new/core/services/firebase_service.dart';
-import 'package:car_maintenance_system_new/core/models/user_model.dart' as app_models;
 
-class CashierProfilePage extends ConsumerStatefulWidget {
+class CashierProfilePage extends StatelessWidget {
   const CashierProfilePage({super.key});
 
   @override
-  ConsumerState<CashierProfilePage> createState() => _CashierProfilePageState();
-}
-
-class _CashierProfilePageState extends ConsumerState<CashierProfilePage> {
-  DateTime? _accountCreatedDate;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadUserFullData();
-    });
-  }
-
-  Future<void> _loadUserFullData() async {
-    try {
-      final user = ref.read(authProvider).user;
-      if (user == null) return;
-
-      final doc = await FirebaseService.usersCollection.doc(user.id).get();
-      if (doc.exists) {
-        final userData = app_models.UserModel.fromFirestore(
-          doc.data() as Map<String, dynamic>,
-          doc.id,
-        );
-        if (mounted) {
-          setState(() {
-            _accountCreatedDate = userData.createdAt;
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint('Error loading user data: $e');
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-    final user = authState.user;
-    final bookingState = ref.watch(bookingProvider);
-
-    // Calculate cashier stats
-    final processedPayments = bookingState.bookings
-        .where((b) => b.isPaid && b.cashierId == user?.id)
-        .toList();
-    
-    final totalAmount = processedPayments.fold<double>(
-      0,
-      (sum, booking) => sum + booking.totalCost,
-    );
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit),
+            onPressed: () {
+              // Edit profile
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(16.w),
         child: Column(
           children: [
             // Profile Header
-            CircleAvatar(
-              radius: 50.r,
-              backgroundColor: Theme.of(context).primaryColor,
-              child: Text(
-                user?.name.substring(0, 1).toUpperCase() ?? 'C',
-                style: TextStyle(
-                  fontSize: 40.sp,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            SizedBox(height: 16.h),
-            Text(
-              user?.name ?? 'Cashier',
-              style: TextStyle(
-                fontSize: 24.sp,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            SizedBox(height: 4.h),
             Container(
-              padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+              width: double.infinity,
+              padding: EdgeInsets.all(24.w),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.shade200),
-              ),
-              child: Text(
-                'Cashier',
-                style: TextStyle(
-                  color: Colors.blue.shade700,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12.sp,
-                ),
-              ),
-            ),
-
-            SizedBox(height: 24.h),
-
-            // Stats Cards
-            Row(
-              children: [
-                Expanded(
-                  child: Card(
-                    color: Colors.green.shade50,
-                    child: Padding(
-                      padding: EdgeInsets.all(16.w),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.payment,
-                            color: Colors.green,
-                            size: 32.sp,
-                          ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            '${processedPayments.length}',
-                            style: TextStyle(
-                              fontSize: 24.sp,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.green,
-                            ),
-                          ),
-                          Text(
-                            'Payments',
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(width: 16.w),
-                Expanded(
-                  child: Card(
-                    color: Colors.orange.shade50,
-                    child: Padding(
-                      padding: EdgeInsets.all(16.w),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.attach_money,
-                            color: Colors.orange,
-                            size: 32.sp,
-                          ),
-                          SizedBox(height: 8.h),
-                          Text(
-                            '\$${totalAmount.toStringAsFixed(0)}',
-                            style: TextStyle(
-                              fontSize: 24.sp,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange,
-                            ),
-                          ),
-                          Text(
-                            'Total Amount',
-                            style: TextStyle(
-                              fontSize: 12.sp,
-                              color: Colors.grey,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: 16.h),
-
-            // Profile Info Card
-            Card(
-              child: Padding(
-                padding: EdgeInsets.all(16.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Account Information',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    SizedBox(height: 16.h),
-                    _buildInfoRow(Icons.person, 'Name', user?.name ?? ''),
-                    _buildInfoRow(Icons.email, 'Email', user?.email ?? ''),
-                    _buildInfoRow(Icons.phone, 'Phone', user?.phone ?? ''),
-                    if (_accountCreatedDate != null)
-                      _buildInfoRow(
-                        Icons.calendar_today,
-                        'Member Since',
-                        DateFormat('dd MMMM yyyy').format(_accountCreatedDate!),
-                      ),
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.orange,
+                    Colors.orange.withOpacity(0.8),
                   ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
+                borderRadius: BorderRadius.circular(16.r),
+              ),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 50.r,
+                    backgroundColor: Colors.white,
+                    child: Icon(
+                      Icons.payment,
+                      size: 50.sp,
+                      color: Colors.orange,
+                    ),
+                  ),
+                  SizedBox(height: 16.h),
+                  Text(
+                    'Sarah Ahmed',
+                    style: TextStyle(
+                      fontSize: 24.sp,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(height: 8.h),
+                  Text(
+                    'Cashier',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      color: Colors.white.withOpacity(0.9),
+                    ),
+                  ),
+                  SizedBox(height: 4.h),
+                  Text(
+                    'sarah.ahmed@email.com',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: Colors.white.withOpacity(0.8),
+                    ),
+                  ),
+                ],
               ),
             ),
-
+            
             SizedBox(height: 24.h),
-
-            // Sign Out Button
+            
+            // Profile Options
+            _buildProfileOption(
+              context,
+              icon: Icons.person_outline,
+              title: 'Personal Information',
+              subtitle: 'Update your personal details',
+              onTap: () {},
+            ),
+            
+            _buildProfileOption(
+              context,
+              icon: Icons.payment,
+              title: 'Payment History',
+              subtitle: 'View processed payments',
+              onTap: () {},
+            ),
+            
+            _buildProfileOption(
+              context,
+              icon: Icons.receipt,
+              title: 'Invoice Management',
+              subtitle: 'Generate and manage invoices',
+              onTap: () {},
+            ),
+            
+            _buildProfileOption(
+              context,
+              icon: Icons.notifications,
+              title: 'Notifications',
+              subtitle: 'Manage notification preferences',
+              onTap: () {},
+            ),
+            
+            _buildProfileOption(
+              context,
+              icon: Icons.help_outline,
+              title: 'Help & Support',
+              subtitle: 'Get help and contact support',
+              onTap: () {},
+            ),
+            
+            SizedBox(height: 32.h),
+            
+            // Logout Button
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
+              child: OutlinedButton.icon(
                 onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (dialogContext) => AlertDialog(
-                      title: const Text('Sign Out'),
-                      content: const Text('Are you sure you want to sign out?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(dialogContext),
-                          child: const Text('Cancel'),
-                        ),
-                        ElevatedButton(
-                          onPressed: () async {
-                            Navigator.pop(dialogContext);
-                            await Future.delayed(const Duration(milliseconds: 100));
-                            if (mounted) {
-                              await ref.read(authProvider.notifier).signOut();
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                          ),
-                          child: const Text('Sign Out'),
-                        ),
-                      ],
-                    ),
-                  );
+                  // Logout
                 },
-                icon: const Icon(Icons.logout),
-                label: const Text('Sign Out'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  padding: EdgeInsets.all(16.h),
+                icon: const Icon(Icons.logout, color: Colors.red),
+                label: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.red),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.red),
+                  padding: EdgeInsets.symmetric(vertical: 16.h),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
                 ),
               ),
             ),
@@ -264,35 +149,49 @@ class _CashierProfilePageState extends ConsumerState<CashierProfilePage> {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: 12.h),
-      child: Row(
-        children: [
-          Icon(icon, size: 20.sp, color: Colors.grey),
-          SizedBox(width: 12.w),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: Colors.grey,
-                  ),
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
+  Widget _buildProfileOption(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      margin: EdgeInsets.only(bottom: 8.h),
+      child: ListTile(
+        leading: Container(
+          width: 40.w,
+          height: 40.w,
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8.r),
           ),
-        ],
+          child: Icon(
+            icon,
+            color: Colors.orange,
+            size: 20.sp,
+          ),
+        ),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 14.sp,
+            color: Colors.grey[600],
+          ),
+        ),
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          size: 16.sp,
+          color: Colors.grey[400],
+        ),
+        onTap: onTap,
       ),
     );
   }

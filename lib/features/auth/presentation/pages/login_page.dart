@@ -1,17 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:car_maintenance_system_new/core/providers/auth_provider.dart';
 
-class LoginPage extends ConsumerStatefulWidget {
+class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
   @override
-  ConsumerState<LoginPage> createState() => _LoginPageState();
+  State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends ConsumerState<LoginPage> {
+class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -24,32 +22,15 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
+  void _handleLogin() {
     if (_formKey.currentState!.validate()) {
-      // Pass empty role - auth provider will auto-detect from Firestore
-      final success = await ref.read(authProvider.notifier).signIn(
-        _emailController.text.trim(),
-        _passwordController.text,
-        '', // Empty role triggers auto-detection in auth_provider
-      );
-      
-      if (!success && mounted) {
-        final errorMessage = ref.read(authProvider).error ?? 'Login failed. Please check your credentials.';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-      // If success, navigation is handled automatically by the router
+      // Navigate to customer dashboard for demo
+      context.go('/customer');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     
     return Scaffold(
@@ -98,59 +79,64 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                         'Sign in to your account',
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                           color: Colors.grey[600],
-                          fontSize: 14.sp,
+                          fontSize: 16.sp,
                         ),
                         textAlign: TextAlign.center,
                       ),
                     ],
                   ),
                   
-                  SizedBox(height: 32.h),
+                  SizedBox(height: 48.h),
                   
                   // Login Form
                   Form(
                     key: _formKey,
                     child: Column(
                       children: [
+                        // Email Field
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
-                          style: TextStyle(fontSize: 14.sp),
                           decoration: InputDecoration(
                             labelText: 'Email',
-                            labelStyle: TextStyle(fontSize: 14.sp),
-                            prefixIcon: Icon(Icons.email, size: 20.sp),
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12.w,
-                              vertical: 16.h,
+                            hintText: 'Enter your email',
+                            prefixIcon: const Icon(Icons.email_outlined),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(color: Theme.of(context).primaryColor),
                             ),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your email';
                             }
+                            if (!value.contains('@')) {
+                              return 'Please enter a valid email';
+                            }
                             return null;
                           },
                         ),
+                        
                         SizedBox(height: 16.h),
+                        
+                        // Password Field
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
-                          style: TextStyle(fontSize: 14.sp),
                           decoration: InputDecoration(
                             labelText: 'Password',
-                            labelStyle: TextStyle(fontSize: 14.sp),
-                            prefixIcon: Icon(Icons.lock, size: 20.sp),
-                            isDense: true,
-                            contentPadding: EdgeInsets.symmetric(
-                              horizontal: 12.w,
-                              vertical: 16.h,
-                            ),
+                            hintText: 'Enter your password',
+                            prefixIcon: const Icon(Icons.lock_outlined),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                                size: 20.sp,
                               ),
                               onPressed: () {
                                 setState(() {
@@ -158,69 +144,131 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 });
                               },
                             ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(color: Colors.grey[300]!),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12.r),
+                              borderSide: BorderSide(color: Theme.of(context).primaryColor),
+                            ),
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your password';
                             }
+                            if (value.length < 6) {
+                              return 'Password must be at least 6 characters';
+                            }
                             return null;
                           },
                         ),
+                        
                         SizedBox(height: 24.h),
+                        
+                        // Login Button
                         SizedBox(
                           width: double.infinity,
                           height: 48.h,
                           child: ElevatedButton(
-                            onPressed: authState.isLoading ? null : _handleLogin,
-                            child: authState.isLoading
-                                ? SizedBox(
-                                    height: 20.w,
-                                    width: 20.w,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.w,
-                                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
-                                    ),
-                                  )
-                                : Text('Sign In', style: TextStyle(fontSize: 16.sp)),
+                            onPressed: _handleLogin,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Theme.of(context).primaryColor,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              elevation: 2,
+                            ),
+                            child: Text(
+                              'Sign In',
+                              style: TextStyle(
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
+                        ),
+                        
+                        SizedBox(height: 16.h),
+                        
+                        // Register Link
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              "Don't have an account? ",
+                              style: TextStyle(
+                                fontSize: 14.sp,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => context.go('/register'),
+                              child: Text(
+                                'Sign Up',
+                                style: TextStyle(
+                                  fontSize: 14.sp,
+                                  color: Theme.of(context).primaryColor,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
                   
+                  SizedBox(height: 32.h),
+                  
+                  // Demo Navigation Buttons
+                  Text(
+                    'Demo Navigation:',
+                    style: TextStyle(
+                      fontSize: 14.sp,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                   SizedBox(height: 16.h),
                   
-                  // Register Link
                   Wrap(
-                    alignment: WrapAlignment.center,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8.w,
+                    runSpacing: 8.h,
                     children: [
-                      Text(
-                        "Don't have an account? ",
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 14.sp,
-                        ),
-                      ),
-                      TextButton(
-                        onPressed: () => context.go('/register'),
-                        child: Text(
-                          'Sign Up',
-                          style: TextStyle(
-                            fontSize: 14.sp,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+                      _buildDemoButton('Customer', '/customer', Colors.blue),
+                      _buildDemoButton('Technician', '/technician', Colors.green),
+                      _buildDemoButton('Admin', '/admin', Colors.red),
+                      _buildDemoButton('Cashier', '/cashier', Colors.orange),
                     ],
                   ),
-                  
-                  SizedBox(height: 16.h),
                 ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDemoButton(String label, String route, Color color) {
+    return ElevatedButton(
+      onPressed: () => context.go(route),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8.r),
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 12.sp),
       ),
     );
   }

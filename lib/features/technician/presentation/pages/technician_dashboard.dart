@@ -1,168 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:car_maintenance_system_new/core/providers/auth_provider.dart';
-import 'package:car_maintenance_system_new/core/providers/booking_provider.dart';
-import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
-import 'package:car_maintenance_system_new/features/shared/presentation/pages/settings_page.dart';
+import 'package:car_maintenance_system_new/features/technician/presentation/pages/technician_jobs_page.dart';
+import 'package:car_maintenance_system_new/features/technician/presentation/pages/technician_profile_page.dart';
 import 'package:car_maintenance_system_new/features/technician/presentation/widgets/today_jobs.dart';
 import 'package:car_maintenance_system_new/features/technician/presentation/widgets/performance_stats.dart';
 
-class TechnicianDashboard extends ConsumerStatefulWidget {
+class TechnicianDashboard extends StatefulWidget {
   const TechnicianDashboard({super.key});
 
   @override
-  ConsumerState<TechnicianDashboard> createState() => _TechnicianDashboardState();
+  State<TechnicianDashboard> createState() => _TechnicianDashboardState();
 }
 
-class _TechnicianDashboardState extends ConsumerState<TechnicianDashboard> {
-  @override
-  void initState() {
-    super.initState();
-    // Start real-time listeners for bookings and load cars when dashboard opens
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = ref.read(authProvider).user;
-      if (user != null) {
-        // Start real-time listener for all bookings
-        ref.read(bookingProvider.notifier).startListening(user.id, role: 'technician');
-        // Load all cars to display car info in jobs
-        ref.read(carProvider.notifier).loadCars('');
-      }
-    });
-  }
+class _TechnicianDashboardState extends State<TechnicianDashboard> {
+  int _selectedIndex = 0;
 
-  @override
-  void dispose() {
-    // Stop listening when dashboard is disposed
-    // Wrap in try-catch to handle cases where widget is already disposed during logout
-    try {
-      ref.read(bookingProvider.notifier).stopListening();
-    } catch (e) {
-      // Widget was already disposed, safe to ignore
-      debugPrint('Dashboard disposed, listener cleanup skipped: $e');
-    }
-    super.dispose();
-  }
-
-  Future<void> _refreshData() async {
-    final user = ref.read(authProvider).user;
-    if (user != null) {
-      await ref.read(bookingProvider.notifier).loadBookings(user.id, role: 'technician');
-      await ref.read(carProvider.notifier).loadCars('');
-    }
-  }
+  final List<Widget> _pages = [
+    const _TechnicianHome(),
+    const TechnicianJobsPage(),
+    const TechnicianProfilePage(),
+  ];
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-    final user = authState.user;
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Welcome, ${user?.name ?? 'Technician'}',
-          style: TextStyle(fontSize: 18.sp),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.settings, size: 22.sp),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const SettingsPage()),
-              );
-            },
-          ),
-          IconButton(
-            icon: Icon(Icons.notifications, size: 22.sp),
-            onPressed: () {
-              // TODO: Navigate to notifications
-            },
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _refreshData,
-        child: SingleChildScrollView(
-        padding: EdgeInsets.all(16.w),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Welcome Card
-            Card(
-              child: Padding(
-                padding: EdgeInsets.all(16.w),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Good ${_getGreeting()}!',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20.sp,
-                      ),
-                    ),
-                    SizedBox(height: 8.h),
-                    Text(
-                      'Ready to start your day?',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.grey[600],
-                        fontSize: 14.sp,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            SizedBox(height: 24.h),
-            
-            // Performance Stats
-            Text(
-              'Performance',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 18.sp,
-              ),
-            ),
-            SizedBox(height: 16.h),
-            const PerformanceStats(),
-            
-            SizedBox(height: 24.h),
-            
-            // Today's Jobs
-            Text(
-              "Today's Jobs",
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 18.sp,
-              ),
-            ),
-            SizedBox(height: 16.h),
-            const TodayJobs(),
-          ],
-        ),
-        ),
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: _pages,
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        currentIndex: 0,
-        selectedFontSize: 12.sp,
-        unselectedFontSize: 10.sp,
-        iconSize: 24.sp,
+        currentIndex: _selectedIndex,
         onTap: (index) {
-          switch (index) {
-            case 0:
-              // Already on dashboard
-              break;
-            case 1:
-              context.go('/technician/jobs');
-              break;
-            case 2:
-              context.go('/technician/profile');
-              break;
-          }
+          setState(() {
+            _selectedIndex = index;
+          });
         },
         items: const [
           BottomNavigationBarItem(
@@ -181,15 +53,82 @@ class _TechnicianDashboardState extends ConsumerState<TechnicianDashboard> {
       ),
     );
   }
+}
 
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) {
-      return 'Morning';
-    } else if (hour < 17) {
-      return 'Afternoon';
-    } else {
-      return 'Evening';
-    }
+class _TechnicianHome extends StatelessWidget {
+  const _TechnicianHome();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Technician Dashboard'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              context.go('/settings');
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: () {
+              context.go('/login');
+            },
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Welcome Section
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).primaryColor,
+                    Theme.of(context).primaryColor.withValues(alpha: 0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Welcome back, Ahmed Hassan!',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Manage your assigned jobs efficiently',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Performance Stats
+            const PerformanceStats(),
+            const SizedBox(height: 24),
+            
+            // Today's Jobs
+            const TodayJobs(),
+          ],
+        ),
+      ),
+    );
   }
 }

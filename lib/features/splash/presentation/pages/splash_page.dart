@@ -1,131 +1,97 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:car_maintenance_system_new/core/providers/auth_provider.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:go_router/go_router.dart';
 
-class SplashPage extends ConsumerStatefulWidget {
+class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
 
   @override
-  ConsumerState<SplashPage> createState() => _SplashPageState();
+  State<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends ConsumerState<SplashPage>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
-  late Animation<double> _scaleAnimation;
-
+class _SplashPageState extends State<SplashPage> {
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(seconds: 2),
-      vsync: this,
-    );
-    
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
-    ));
-    
-    _scaleAnimation = Tween<double>(
-      begin: 0.5,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.0, 0.5, curve: Curves.elasticOut),
-    ));
-    
-    _animationController.forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
+    // Navigate to login after 2 seconds
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        context.go('/login');
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final authState = ref.watch(authProvider);
-    
     return Scaffold(
-      backgroundColor: Theme.of(context).primaryColor,
-      body: Center(
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Theme.of(context).primaryColor,
+              Theme.of(context).primaryColor.withOpacity(0.8),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo Animation
-            AnimatedBuilder(
-              animation: _animationController,
-              builder: (context, child) {
-                return FadeTransition(
-                  opacity: _fadeAnimation,
-                  child: ScaleTransition(
-                    scale: _scaleAnimation,
-                    child: Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(60),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
-                            blurRadius: 20,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.car_repair,
-                        size: 60,
-                        color: Color(0xFF2E7D32),
-                      ),
-                    ),
+            // Logo
+            Container(
+              width: 120.w,
+              height: 120.w,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(60.r),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    spreadRadius: 5,
+                    blurRadius: 15,
+                    offset: const Offset(0, 5),
                   ),
-                );
-              },
+                ],
+              ),
+              child: Icon(
+                Icons.car_repair,
+                size: 60.sp,
+                color: Theme.of(context).primaryColor,
+              ),
             ),
             
-            const SizedBox(height: 32),
+            SizedBox(height: 32.h),
             
             // App Name
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: Text(
-                'Car Maintenance',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+            Text(
+              'Car Maintenance',
+              style: TextStyle(
+                fontSize: 32.sp,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
             
-            const SizedBox(height: 8),
+            SizedBox(height: 8.h),
             
-            // Tagline
-            FadeTransition(
-              opacity: _fadeAnimation,
-              child: Text(
-                'Professional Car Service Management',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.white70,
-                ),
-                textAlign: TextAlign.center,
+            // Subtitle
+            Text(
+              'Professional Car Care',
+              style: TextStyle(
+                fontSize: 16.sp,
+                color: Colors.white.withOpacity(0.9),
               ),
             ),
             
-            const SizedBox(height: 48),
+            SizedBox(height: 64.h),
             
             // Loading Indicator
-            if (authState.isLoading)
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
           ],
         ),
       ),

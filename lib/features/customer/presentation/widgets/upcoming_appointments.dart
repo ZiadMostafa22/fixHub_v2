@@ -1,276 +1,225 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/intl.dart';
-import 'package:car_maintenance_system_new/core/providers/booking_provider.dart';
-import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
-import 'package:car_maintenance_system_new/core/models/booking_model.dart';
 
-class UpcomingAppointments extends ConsumerWidget {
+class UpcomingAppointments extends StatelessWidget {
   const UpcomingAppointments({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final bookingState = ref.watch(bookingProvider);
-    final carState = ref.watch(carProvider);
-    
-    // Filter upcoming bookings (pending, confirmed only - not inProgress)
-    final upcomingBookings = bookingState.bookings.where((booking) {
-      return (booking.status == BookingStatus.pending ||
-              booking.status == BookingStatus.confirmed) &&
-             booking.scheduledDate.isAfter(DateTime.now());
-    }).toList();
-    
-    // Sort by scheduled date
-    upcomingBookings.sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
-    
-    // Show only next 3 upcoming
-    final displayBookings = upcomingBookings.take(3).toList();
-
-    // Don't show the section at all if no upcoming appointments
-    if (displayBookings.isEmpty) {
-      return const SizedBox.shrink();
-    }
+  Widget build(BuildContext context) {
+    // Demo data for upcoming appointments
+    final List<Map<String, dynamic>> upcomingAppointments = [
+      {
+        'id': '1',
+        'serviceType': 'Oil Change',
+        'carMake': 'Toyota',
+        'carModel': 'Camry',
+        'date': '2024-03-15',
+        'time': '10:00 AM',
+        'technicianName': 'Ahmed Hassan',
+        'estimatedDuration': '1 hour',
+      },
+      {
+        'id': '2',
+        'serviceType': 'Brake Service',
+        'carMake': 'Honda',
+        'carModel': 'Civic',
+        'date': '2024-03-20',
+        'time': '2:00 PM',
+        'technicianName': 'Mohamed Ali',
+        'estimatedDuration': '2 hours',
+      },
+    ];
 
     return Column(
-      children: displayBookings.map((booking) {
-        // Get car info
-        final car = carState.cars.where((c) => c.id == booking.carId).firstOrNull;
-        
-        final carName = car != null ? '${car.make} ${car.model}' : 'Unknown Car';
-        
-        return Card(
-          margin: EdgeInsets.only(bottom: 12.h),
-          child: Padding(
-            padding: EdgeInsets.all(16.w),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                'Upcoming Appointments',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                // Navigate to bookings page
+              },
+              child: Text(
+                'View All',
+                style: TextStyle(
+                  color: Theme.of(context).primaryColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        if (upcomingAppointments.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[200]!),
+            ),
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 4.w,
-                      height: 60.h,
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(booking.status),
-                        borderRadius: BorderRadius.circular(2.r),
-                      ),
+                Icon(
+                  Icons.calendar_today,
+                  size: 40,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'No upcoming appointments',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Book your next service',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: upcomingAppointments.length,
+            itemBuilder: (context, index) {
+              final appointment = upcomingAppointments[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey[200]!),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      spreadRadius: 1,
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
                     ),
-                    SizedBox(width: 16.w),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _getMaintenanceTypeName(booking.maintenanceType),
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15.sp,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          SizedBox(height: 4.h),
-                          Text(
-                            carName,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey[600],
-                              fontSize: 13.sp,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                          child: const Icon(
+                            Icons.schedule,
+                            size: 24,
+                            color: Colors.blue,
                           ),
-                          SizedBox(height: 8.h),
-                          Row(
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                Icons.calendar_today,
-                                size: 14.sp,
-                                color: Colors.grey[500],
-                              ),
-                              SizedBox(width: 4.w),
                               Text(
-                                '${DateFormat('MMM dd, yyyy').format(booking.scheduledDate)} at ${booking.timeSlot}',
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey[500],
-                                  fontSize: 11.sp,
+                                appointment['serviceType'],
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${appointment['carMake']} ${appointment['carModel']}',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Colors.grey[600],
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                '${appointment['date']} at ${appointment['time']}',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Colors.grey[600],
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.timer,
+                                size: 16,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  appointment['estimatedDuration'],
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey[500],
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
-                      decoration: BoxDecoration(
-                        color: _getStatusColor(booking.status).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                      child: Text(
-                        _getStatusName(booking.status),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: _getStatusColor(booking.status),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11.sp,
                         ),
-                      ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.person,
+                                size: 16,
+                                color: Colors.grey,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  appointment['technicianName'],
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey[500],
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                
-                // Cancel button (only for pending and confirmed bookings)
-                if (booking.status == BookingStatus.pending || 
-                    booking.status == BookingStatus.confirmed) ...[
-                  SizedBox(height: 12.h),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _showCancelDialog(context, ref, booking),
-                      icon: Icon(Icons.cancel_outlined, size: 16.sp),
-                      label: const Text('Cancel Appointment'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
-                        padding: EdgeInsets.symmetric(vertical: 12.h, horizontal: 16.w),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  void _showCancelDialog(BuildContext context, WidgetRef ref, BookingModel booking) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Cancel Appointment'),
-        content: const Text(
-          'Are you sure you want to cancel this appointment? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Keep Appointment'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              // Close confirmation dialog first
-              Navigator.pop(dialogContext);
-              
-              // Show simple loading indicator
-              if (!context.mounted) return;
-              
-              // Use a simple loading overlay instead of dialog
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (ctx) => const Center(
-                  child: CircularProgressIndicator(),
-                ),
               );
-              
-              try {
-                // Quick cancellation with immediate UI update
-                final success = await ref.read(bookingProvider.notifier).cancelBooking(
-                  booking.id,
-                );
-                
-                // Close loading immediately
-                if (context.mounted) {
-                  Navigator.of(context).pop();
-                }
-                
-                // Show result immediately
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        success 
-                          ? 'Appointment cancelled successfully'
-                          : 'Failed to cancel appointment. Please try again.',
-                      ),
-                      backgroundColor: success ? Colors.green : Colors.red,
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                }
-              } catch (e) {
-                print('❌ Cancellation error: $e');
-                
-                // Close loading immediately
-                if (context.mounted) {
-                  Navigator.of(context).pop();
-                }
-                
-                // Show error
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error cancelling appointment: ${e.toString()}'),
-                      backgroundColor: Colors.red,
-                      duration: const Duration(seconds: 3),
-                    ),
-                  );
-                }
-              }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
-            child: const Text('Cancel Appointment'),
           ),
-        ],
-      ),
+      ],
     );
-  }
-
-  String _getMaintenanceTypeName(MaintenanceType type) {
-    switch (type) {
-      case MaintenanceType.regular:
-        return 'Regular Maintenance';
-      case MaintenanceType.inspection:
-        return 'Inspection';
-      case MaintenanceType.repair:
-        return 'Repair Service';
-      case MaintenanceType.emergency:
-        return 'Emergency Service';
-    }
-  }
-
-  String _getStatusName(BookingStatus status) {
-    switch (status) {
-      case BookingStatus.pending:
-        return 'Pending';
-      case BookingStatus.confirmed:
-        return 'Confirmed';
-      case BookingStatus.inProgress:
-        return 'In Progress';
-      case BookingStatus.completedPendingPayment:
-        return 'Awaiting Payment';
-      case BookingStatus.completed:
-        return 'Completed';
-      case BookingStatus.cancelled:
-        return 'Cancelled';
-    }
-  }
-
-  Color _getStatusColor(BookingStatus status) {
-    switch (status) {
-      case BookingStatus.confirmed:
-        return Colors.green;
-      case BookingStatus.pending:
-        return Colors.orange;
-      case BookingStatus.inProgress:
-        return Colors.blue;
-      case BookingStatus.completedPendingPayment:
-        return Colors.deepPurple;
-      case BookingStatus.completed:
-        return Colors.green;
-      case BookingStatus.cancelled:
-        return Colors.red;
-    }
   }
 }

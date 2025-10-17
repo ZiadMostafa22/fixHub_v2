@@ -1,7 +1,4 @@
-import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:car_maintenance_system_new/core/providers/auth_provider.dart';
 import 'package:car_maintenance_system_new/features/auth/presentation/pages/login_page.dart';
 import 'package:car_maintenance_system_new/features/auth/presentation/pages/register_page.dart';
 import 'package:car_maintenance_system_new/features/customer/presentation/pages/customer_dashboard.dart';
@@ -27,125 +24,11 @@ import 'package:car_maintenance_system_new/features/cashier/presentation/pages/c
 import 'package:car_maintenance_system_new/features/cashier/presentation/pages/cashier_payments_page.dart';
 import 'package:car_maintenance_system_new/features/cashier/presentation/pages/cashier_payment_details_page.dart';
 import 'package:car_maintenance_system_new/features/cashier/presentation/pages/cashier_profile_page.dart';
-import 'package:car_maintenance_system_new/features/splash/presentation/pages/splash_page.dart';
 
-// Create a listenable for auth state changes
-class AuthStateNotifier extends ChangeNotifier {
-  AuthStateNotifier(this._ref) {
-    _ref.listen<AuthState>(
-      authProvider,
-      (previous, next) {
-        // Notify listeners whenever auth state changes
-        if (previous?.userRole != next.userRole ||
-            previous?.userId != next.userId ||
-            previous?.isLoading != next.isLoading) {
-          notifyListeners();
-        }
-      },
-    );
-  }
-  final Ref _ref;
-}
-
-final routerProvider = Provider<GoRouter>((ref) {
-  final authStateNotifier = AuthStateNotifier(ref);
-  
-  return GoRouter(
-    initialLocation: '/splash',
-    refreshListenable: authStateNotifier,
-    redirect: (context, state) {
-      final authState = ref.read(authProvider);
-      final isLoading = authState.isLoading;
-      final userId = authState.userId;
-      final userRole = authState.userRole;
-      final isLoggedIn = userId != null && userRole != null;
-      
-      final currentPath = state.uri.toString();
-      
-      // Show splash while loading
-      if (isLoading) {
-        if (currentPath != '/splash') {
-          return '/splash';
-        }
-        return null;
-      }
-      
-      // Redirect to login if not authenticated
-      if (!isLoggedIn) {
-        if (currentPath == '/splash') {
-          return '/login'; // Go to login after splash
-        }
-        // If user is not logged in and trying to access protected routes, redirect to login
-        if (currentPath != '/login' && currentPath != '/register') {
-          if (kDebugMode) {
-            debugPrint('🔒 User not authenticated, redirecting to login from: $currentPath');
-          }
-          return '/login';
-        }
-        return null;
-      }
-      
-      // Redirect based on user role when authenticated
-      if (isLoggedIn) {
-        if (currentPath == '/splash' || currentPath == '/login' || currentPath == '/register') {
-          if (kDebugMode) {
-            debugPrint('✅ User authenticated as $userRole, redirecting from: $currentPath');
-          }
-          switch (userRole) {
-            case 'customer':
-              return '/customer';
-            case 'technician':
-              return '/technician';
-            case 'admin':
-              return '/admin';
-            case 'cashier':
-              return '/cashier';
-            default:
-              return '/customer';
-          }
-        }
-        
-        // Verify user is accessing correct role-based route
-        if (userRole == 'customer' && !currentPath.startsWith('/customer')) {
-          if (currentPath.startsWith('/technician') || currentPath.startsWith('/admin')) {
-            if (kDebugMode) {
-              debugPrint('⚠️ Customer trying to access non-customer route: $currentPath');
-            }
-            return '/customer';
-          }
-        } else if (userRole == 'technician' && !currentPath.startsWith('/technician')) {
-          if (currentPath.startsWith('/customer') || currentPath.startsWith('/admin')) {
-            if (kDebugMode) {
-              debugPrint('⚠️ Technician trying to access non-technician route: $currentPath');
-            }
-            return '/technician';
-          }
-        } else if (userRole == 'admin' && !currentPath.startsWith('/admin')) {
-          if (currentPath.startsWith('/customer') || currentPath.startsWith('/technician') || currentPath.startsWith('/cashier')) {
-            if (kDebugMode) {
-              debugPrint('⚠️ Admin trying to access non-admin route: $currentPath');
-            }
-            return '/admin';
-          }
-        } else if (userRole == 'cashier' && !currentPath.startsWith('/cashier')) {
-          if (currentPath.startsWith('/customer') || currentPath.startsWith('/technician') || currentPath.startsWith('/admin')) {
-            if (kDebugMode) {
-              debugPrint('⚠️ Cashier trying to access non-cashier route: $currentPath');
-            }
-            return '/cashier';
-          }
-        }
-      }
-      
-      return null; // No redirect needed
-    },
+class AppRouter {
+  static final GoRouter router = GoRouter(
+    initialLocation: '/login',
     routes: [
-      // Splash
-      GoRoute(
-        path: '/splash',
-        builder: (context, state) => const SplashPage(),
-      ),
-      
       // Authentication
       GoRoute(
         path: '/login',
@@ -271,4 +154,4 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
-});
+}

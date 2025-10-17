@@ -1,763 +1,409 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-import 'package:car_maintenance_system_new/core/providers/auth_provider.dart';
-import 'package:car_maintenance_system_new/core/providers/booking_provider.dart';
-import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
-import 'package:car_maintenance_system_new/core/models/booking_model.dart';
-import 'package:car_maintenance_system_new/core/models/offer_model.dart';
-import 'package:car_maintenance_system_new/core/utils/discount_validator.dart';
 
-class NewBookingPage extends ConsumerStatefulWidget {
+class NewBookingPage extends StatefulWidget {
   const NewBookingPage({super.key});
 
   @override
-  ConsumerState<NewBookingPage> createState() => _NewBookingPageState();
+  State<NewBookingPage> createState() => _NewBookingPageState();
 }
 
-class _NewBookingPageState extends ConsumerState<NewBookingPage> {
+class _NewBookingPageState extends State<NewBookingPage> {
   final _formKey = GlobalKey<FormState>();
-  String? _selectedCarId;
-  String? _selectedService;
-  MaintenanceType _selectedMaintenanceType = MaintenanceType.regular;
-  DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
-  final _descriptionController = TextEditingController();
-  final _discountCodeController = TextEditingController();
-  OfferModel? _appliedOffer;
-  bool _isValidatingCode = false;
+  String _selectedCar = 'Toyota Camry';
+  String _selectedService = 'Oil Change';
+  String _selectedDate = '';
+  String _selectedTime = '';
+  String _selectedTechnician = 'Ahmed Hassan';
+  final _notesController = TextEditingController();
 
+  final List<String> _cars = ['Toyota Camry', 'Honda Civic'];
   final List<String> _services = [
     'Oil Change',
+    'Brake Service',
+    'Engine Check',
     'Tire Rotation',
-    'Brake Inspection',
-    'Engine Tune-up',
-    'Battery Replacement',
-    'AC Service',
-    'Transmission Service',
-    'General Inspection',
-    'Wheel Alignment',
-    'Suspension Repair',
-    'Other',
+    'Air Filter Replacement',
+    'Battery Check',
   ];
-
-  final Map<MaintenanceType, String> _maintenanceTypeNames = {
-    MaintenanceType.regular: 'Regular Maintenance',
-    MaintenanceType.inspection: 'Inspection',
-    MaintenanceType.repair: 'Repair',
-    MaintenanceType.emergency: 'Emergency',
-  };
-
-  @override
-  void initState() {
-    super.initState();
-    // Load user's cars
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final user = ref.read(authProvider).user;
-      if (user != null) {
-        ref.read(carProvider.notifier).loadCars(user.id);
-      }
-    });
-  }
+  final List<String> _technicians = [
+    'Ahmed Hassan',
+    'Mohamed Ali',
+    'Omar Ibrahim',
+  ];
+  final List<String> _timeSlots = [
+    '9:00 AM',
+    '10:00 AM',
+    '11:00 AM',
+    '12:00 PM',
+    '2:00 PM',
+    '3:00 PM',
+    '4:00 PM',
+    '5:00 PM',
+  ];
 
   @override
   void dispose() {
-    _descriptionController.dispose();
-    _discountCodeController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
-  Future<void> _validateDiscountCode() async {
-    final code = _discountCodeController.text.trim();
-    if (code.isEmpty) {
+  void _handleSubmit() {
+    if (_formKey.currentState!.validate() && _selectedDate.isNotEmpty && _selectedTime.isNotEmpty) {
+      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please enter a discount code'),
-          backgroundColor: Colors.orange,
+          content: Text('Booking created successfully!'),
+          backgroundColor: Colors.green,
         ),
       );
-      return;
-    }
-
-    setState(() => _isValidatingCode = true);
-
-    try {
-      final result = await DiscountValidator.validateDiscountCode(code);
-
-      if (!mounted) return;
-
-      setState(() => _isValidatingCode = false);
-
-      if (result['valid'] == true) {
-        setState(() {
-          _appliedOffer = result['offer'] as OfferModel;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] as String),
-            backgroundColor: Colors.green,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      } else {
-        setState(() {
-          _appliedOffer = null;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message'] as String),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-      }
-    } catch (e) {
-      if (!mounted) return;
-      
-      setState(() => _isValidatingCode = false);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    }
-  }
-
-  void _removeDiscountCode() {
-    setState(() {
-      _appliedOffer = null;
-      _discountCodeController.clear();
-    });
-  }
-
-  Future<void> _selectDate() async {
-    // Allow booking from today onwards
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: today,
-      firstDate: today, // Can book from today
-      lastDate: DateTime.now().add(const Duration(days: 90)),
-      selectableDayPredicate: (DateTime date) {
-        // Disable Fridays (day 5)
-        return date.weekday != DateTime.friday;
-      },
-      helpText: 'Select Appointment Date (Closed on Fridays)',
-    );
-    
-    if (picked != null) {
-      // Double check that it's not Friday
-      if (picked.weekday == DateTime.friday) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('We are closed on Fridays. Please select another day.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        return;
-      }
-      
-      setState(() {
-        _selectedDate = picked;
-        // Reset time selection when date changes
-        _selectedTime = null;
-      });
-    }
-  }
-
-  Future<void> _selectTime() async {
-    // Validate that date is selected first
-    if (_selectedDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a date first'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-    
-    // Check if selected date is Friday (day 5 in Dart - Monday is 1)
-    if (_selectedDate!.weekday == DateTime.friday) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('We are closed on Fridays. Please select another day.'),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
-    
-    final TimeOfDay? picked = await showTimePicker(
-      context: context,
-      initialTime: const TimeOfDay(hour: 9, minute: 0),
-      helpText: 'Working Hours: 8:00 AM - 6:00 PM',
-    );
-    
-    if (picked != null) {
-      // Validate working hours (8 AM to 6 PM)
-      // Allow times from 8:00 to 18:00 (6:00 PM)
-      final pickedHour = picked.hour;
-      
-      if (pickedHour < 8 || pickedHour > 18) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select a time between 8:00 AM and 6:00 PM'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        return;
-      }
-      
-      // Allow 6:00 PM exactly, but not after
-      if (pickedHour == 18 && picked.minute > 0) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Last appointment time is 6:00 PM'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 3),
-          ),
-        );
-        return;
-      }
-      
-      setState(() {
-        _selectedTime = picked;
-      });
-    }
-  }
-
-  Future<void> _submitBooking() async {
-    print('📝 Submit booking called');
-    
-    if (_formKey.currentState!.validate()) {
-      print('✅ Form validated');
-      
-      if (_selectedCarId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a car')),
-        );
-        return;
-      }
-      if (_selectedService == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select a service')),
-        );
-        return;
-      }
-      if (_selectedDate == null || _selectedTime == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select date and time')),
-        );
-        return;
-      }
-      
-      // Final validation for working hours
-      if (_selectedDate!.weekday == DateTime.friday) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('We are closed on Fridays. Please select another day.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-      
-      // Validate working hours (8 AM to 6 PM)
-      if (_selectedTime!.hour < 8 || _selectedTime!.hour > 18) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select a time between 8:00 AM and 6:00 PM'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-      
-      // Allow 6:00 PM exactly, but not after
-      if (_selectedTime!.hour == 18 && _selectedTime!.minute > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Last appointment time is 6:00 PM'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        return;
-      }
-
-      final user = ref.read(authProvider).user;
-      if (user == null) {
-        print('❌ User is null');
-        return;
-      }
-
-      print('👤 User: ${user.id}');
-      print('🚗 Car: $_selectedCarId');
-      print('🛠️ Service: $_selectedService');
-      print('💰 Discount: ${_appliedOffer?.code} (${_appliedOffer?.discountPercentage}%)');
-      print('💰 Offer Title: ${_appliedOffer?.title}');
-      print('💰 Offer ID: ${_appliedOffer?.id}');
-
-      final scheduledDateTime = DateTime(
-        _selectedDate!.year,
-        _selectedDate!.month,
-        _selectedDate!.day,
-        _selectedTime!.hour,
-        _selectedTime!.minute,
-      );
-
-      final booking = BookingModel(
-        id: '',
-        userId: user.id,
-        carId: _selectedCarId!,
-        serviceId: 'service_${DateTime.now().millisecondsSinceEpoch}', // Generate temporary service ID
-        maintenanceType: _selectedMaintenanceType,
-        scheduledDate: scheduledDateTime,
-        timeSlot: _selectedTime!.format(context),
-        status: BookingStatus.pending,
-        description: _descriptionController.text.trim().isEmpty 
-            ? null 
-            : _descriptionController.text.trim(),
-        offerCode: _appliedOffer?.code,
-        offerTitle: _appliedOffer?.title,
-        discountPercentage: _appliedOffer?.discountPercentage,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
-
-      print('📤 Creating booking...');
-      final success = await ref.read(bookingProvider.notifier).createBooking(booking);
-      print('📥 Booking result: $success');
-
-      if (mounted) {
-        print('🏠 Widget still mounted');
-        if (success) {
-          print('✅ Booking created successfully, closing page');
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Booking created successfully!')),
-          );
-          context.pop();
-        } else {
-          final error = ref.read(bookingProvider).error ?? 'Failed to create booking';
-          print('❌ Booking failed: $error');
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(error),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 4),
-            ),
-          );
-        }
-      } else {
-        print('❌ Widget not mounted anymore');
-      }
+      // Navigate back
+      context.go('/customer/bookings');
     } else {
-      print('❌ Form validation failed');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please fill all required fields'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final carState = ref.watch(carProvider);
-    final bookingState = ref.watch(bookingProvider);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('New Booking'),
+        actions: [
+          TextButton(
+            onPressed: _handleSubmit,
+            child: const Text(
+              'Book',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
-      body: carState.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : carState.cars.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(16.w),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Service Selection
+              Text(
+                'Service Details',
+                style: TextStyle(
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              
+              SizedBox(height: 16.h),
+              
+              // Car Selection
+              DropdownButtonFormField<String>(
+                value: _selectedCar,
+                decoration: InputDecoration(
+                  labelText: 'Select Car',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                ),
+                items: _cars.map((car) {
+                  return DropdownMenuItem(
+                    value: car,
+                    child: Text(car),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCar = value!;
+                  });
+                },
+              ),
+              
+              SizedBox(height: 16.h),
+              
+              // Service Type Selection
+              DropdownButtonFormField<String>(
+                value: _selectedService,
+                decoration: InputDecoration(
+                  labelText: 'Service Type',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                ),
+                items: _services.map((service) {
+                  return DropdownMenuItem(
+                    value: service,
+                    child: Text(service),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedService = value!;
+                  });
+                },
+              ),
+              
+              SizedBox(height: 16.h),
+              
+              // Technician Selection
+              DropdownButtonFormField<String>(
+                value: _selectedTechnician,
+                decoration: InputDecoration(
+                  labelText: 'Preferred Technician',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                ),
+                items: _technicians.map((technician) {
+                  return DropdownMenuItem(
+                    value: technician,
+                    child: Text(technician),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedTechnician = value!;
+                  });
+                },
+              ),
+              
+              SizedBox(height: 24.h),
+              
+              // Date and Time Selection
+              Text(
+                'Schedule',
+                style: TextStyle(
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              
+              SizedBox(height: 16.h),
+              
+              // Date Selection
+              InkWell(
+                onTap: () async {
+                  final date = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now().add(const Duration(days: 1)),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 30)),
+                  );
+                  if (date != null) {
+                    setState(() {
+                      _selectedDate = '${date.day}/${date.month}/${date.year}';
+                    });
+                  }
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(16.w),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey[300]!),
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                  child: Row(
                     children: [
-                      const Icon(Icons.directions_car, size: 64, color: Colors.grey),
-                      const SizedBox(height: 16),
-                      const Text('No cars registered'),
-                      const SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: () => context.go('/customer/cars'),
-                        child: const Text('Add a Car'),
+                      Icon(Icons.calendar_today, color: Colors.grey[600]),
+                      SizedBox(width: 12.w),
+                      Text(
+                        _selectedDate.isEmpty ? 'Select Date' : _selectedDate,
+                        style: TextStyle(
+                          fontSize: 16.sp,
+                          color: _selectedDate.isEmpty ? Colors.grey[600] : Colors.black,
+                        ),
                       ),
                     ],
                   ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Form(
-                    key: _formKey,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                ),
+              ),
+              
+              SizedBox(height: 16.h),
+              
+              // Time Selection
+              Text(
+                'Available Time Slots',
+                style: TextStyle(
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              
+              SizedBox(height: 8.h),
+              
+              Wrap(
+                spacing: 8.w,
+                runSpacing: 8.h,
+                children: _timeSlots.map((time) {
+                  final isSelected = _selectedTime == time;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedTime = time;
+                      });
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+                      decoration: BoxDecoration(
+                        color: isSelected ? Theme.of(context).primaryColor : Colors.grey[100],
+                        borderRadius: BorderRadius.circular(20.r),
+                        border: Border.all(
+                          color: isSelected ? Theme.of(context).primaryColor : Colors.grey[300]!,
+                        ),
+                      ),
+                      child: Text(
+                        time,
+                        style: TextStyle(
+                          fontSize: 14.sp,
+                          color: isSelected ? Colors.white : Colors.black,
+                          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              
+              SizedBox(height: 24.h),
+              
+              // Additional Notes
+              Text(
+                'Additional Notes',
+                style: TextStyle(
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              
+              SizedBox(height: 16.h),
+              
+              TextFormField(
+                controller: _notesController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  hintText: 'Any special requests or notes...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.r),
+                  ),
+                ),
+              ),
+              
+              SizedBox(height: 32.h),
+              
+              // Service Summary
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(16.w),
+                decoration: BoxDecoration(
+                  color: Colors.grey[50],
+                  borderRadius: BorderRadius.circular(8.r),
+                  border: Border.all(color: Colors.grey[200]!),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Booking Summary',
+                      style: TextStyle(
+                        fontSize: 16.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 12.h),
+                    _buildSummaryRow('Service', _selectedService),
+                    _buildSummaryRow('Car', _selectedCar),
+                    _buildSummaryRow('Technician', _selectedTechnician),
+                    _buildSummaryRow('Date', _selectedDate.isEmpty ? 'Not selected' : _selectedDate),
+                    _buildSummaryRow('Time', _selectedTime.isEmpty ? 'Not selected' : _selectedTime),
+                    SizedBox(height: 12.h),
+                    const Divider(),
+                    SizedBox(height: 8.h),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        // Car Selection
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Select Car',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                DropdownButtonFormField<String>(
-                                  decoration: const InputDecoration(
-                                    labelText: 'Car',
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    isDense: true,
-                                  ),
-                                  items: carState.cars.map((car) {
-                                    return DropdownMenuItem(
-                                      value: car.id,
-                                      child: Text(
-                                        '${car.make} ${car.model} (${car.year})',
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _selectedCarId = value;
-                                    });
-                                  },
-                                  validator: (value) {
-                                    if (value == null) {
-                                      return 'Please select a car';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ],
-                            ),
+                        Text(
+                          'Estimated Price',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                        const SizedBox(height: 12),
-
-                        // Service Selection
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Select Service',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                DropdownButtonFormField<String>(
-                                  decoration: const InputDecoration(
-                                    labelText: 'Service Type',
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    isDense: true,
-                                  ),
-                                  items: _services.map((service) {
-                                    return DropdownMenuItem(
-                                      value: service,
-                                      child: Text(service),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _selectedService = value;
-                                    });
-                                  },
-                                  validator: (value) {
-                                    if (value == null) {
-                                      return 'Please select a service';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                              ],
-                            ),
+                        Text(
+                          '150 EGP',
+                          style: TextStyle(
+                            fontSize: 18.sp,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).primaryColor,
                           ),
                         ),
-                        const SizedBox(height: 12),
-
-                        // Maintenance Type Selection
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Maintenance Type',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                DropdownButtonFormField<MaintenanceType>(
-                                  value: _selectedMaintenanceType,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Type',
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                    isDense: true,
-                                  ),
-                                  items: _maintenanceTypeNames.entries.map((entry) {
-                                    return DropdownMenuItem(
-                                      value: entry.key,
-                                      child: Text(entry.value),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _selectedMaintenanceType = value!;
-                                    });
-                                  },
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Date & Time Selection
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Schedule',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: _selectDate,
-                                        icon: const Icon(Icons.calendar_today, size: 18),
-                                        label: Text(
-                                          _selectedDate == null
-                                              ? 'Date'
-                                              : DateFormat('MMM dd').format(_selectedDate!),
-                                          style: const TextStyle(fontSize: 13),
-                                        ),
-                                        style: OutlinedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        onPressed: _selectTime,
-                                        icon: const Icon(Icons.access_time, size: 18),
-                                        label: Text(
-                                          _selectedTime == null
-                                              ? 'Time'
-                                              : _selectedTime!.format(context),
-                                          style: const TextStyle(fontSize: 13),
-                                        ),
-                                        style: OutlinedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Description
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Additional Details',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                TextFormField(
-                                  controller: _descriptionController,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Description (Optional)',
-                                    hintText: 'Enter any additional details...',
-                                    border: OutlineInputBorder(),
-                                    contentPadding: EdgeInsets.all(12),
-                                    isDense: true,
-                                  ),
-                                  maxLines: 3,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Discount Code
-                        Card(
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text(
-                                      'Discount Code',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    TextButton.icon(
-                                      onPressed: () => context.go('/customer/offers'),
-                                      icon: const Icon(Icons.local_offer, size: 16),
-                                      label: const Text('View Offers'),
-                                      style: TextButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                if (_appliedOffer == null) ...[
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: TextFormField(
-                                          controller: _discountCodeController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Enter Code (Optional)',
-                                            hintText: 'e.g., SAVE20',
-                                            border: OutlineInputBorder(),
-                                            contentPadding: EdgeInsets.all(12),
-                                            isDense: true,
-                                          ),
-                                          textCapitalization: TextCapitalization.characters,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      ElevatedButton(
-                                        onPressed: _isValidatingCode ? null : _validateDiscountCode,
-                                        style: ElevatedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                        ),
-                                        child: _isValidatingCode
-                                            ? const SizedBox(
-                                                width: 16,
-                                                height: 16,
-                                                child: CircularProgressIndicator(strokeWidth: 2),
-                                              )
-                                            : const Text('Apply'),
-                                      ),
-                                    ],
-                                  ),
-                                ] else ...[
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: Colors.green.withValues(alpha: 0.1),
-                                      border: Border.all(color: Colors.green),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        const Icon(Icons.check_circle, color: Colors.green),
-                                        const SizedBox(width: 8),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                _appliedOffer!.title,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                              Text(
-                                                '${_appliedOffer!.discountPercentage}% off applied',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.green[700],
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        IconButton(
-                                          onPressed: _removeDiscountCode,
-                                          icon: const Icon(Icons.close),
-                                          tooltip: 'Remove',
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Submit Button
-                        ElevatedButton(
-                          onPressed: bookingState.isLoading ? null : _submitBooking,
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.all(14),
-                          ),
-                          child: bookingState.isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Text(
-                                  'Create Booking',
-                                  style: TextStyle(fontSize: 16),
-                                ),
-                        ),
-                        const SizedBox(height: 16), // Bottom padding
                       ],
+                    ),
+                  ],
+                ),
+              ),
+              
+              SizedBox(height: 24.h),
+              
+              // Submit Button
+              SizedBox(
+                width: double.infinity,
+                height: 48.h,
+                child: ElevatedButton(
+                  onPressed: _handleSubmit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8.r),
+                    ),
+                  ),
+                  child: Text(
+                    'Confirm Booking',
+                    style: TextStyle(
+                      fontSize: 16.sp,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryRow(String label, String value) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: 4.h),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14.sp,
+              color: Colors.grey[600],
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14.sp,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

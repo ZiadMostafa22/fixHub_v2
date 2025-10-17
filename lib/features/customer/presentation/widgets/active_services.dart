@@ -1,381 +1,226 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:intl/intl.dart';
-import 'package:car_maintenance_system_new/core/providers/booking_provider.dart';
-import 'package:car_maintenance_system_new/core/providers/car_provider.dart';
-import 'package:car_maintenance_system_new/core/models/booking_model.dart';
-import 'package:car_maintenance_system_new/core/widgets/detailed_invoice_dialog.dart';
 
-class ActiveServices extends ConsumerWidget {
+class ActiveServices extends StatelessWidget {
   const ActiveServices({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final bookingState = ref.watch(bookingProvider);
-    final carState = ref.watch(carProvider);
-
-    // Filter for active services: inProgress or completedPendingPayment
-    final activeBookings = bookingState.bookings.where((booking) {
-      return booking.status == BookingStatus.inProgress || 
-             booking.status == BookingStatus.completedPendingPayment;
-    }).toList();
-
-    if (activeBookings.isEmpty) {
-      return const SizedBox.shrink(); // Don't show anything if no active services
-    }
+  Widget build(BuildContext context) {
+    // Demo data for active services
+    final List<Map<String, dynamic>> activeServices = [
+      {
+        'id': '1',
+        'serviceType': 'Brake Service',
+        'carMake': 'Honda',
+        'carModel': 'Civic',
+        'status': 'In Progress',
+        'startTime': '2:00 PM',
+        'estimatedCompletion': '4:00 PM',
+        'technicianName': 'Mohamed Ali',
+      },
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section Header
-        Row(
-          children: [
-            Icon(
-              Icons.engineering,
-              color: Theme.of(context).primaryColor,
-              size: 20.sp,
-            ),
-            SizedBox(width: 8.w),
-            Text(
-              'Active Services',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 18.sp,
-              ),
-            ),
-            const Spacer(),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-              decoration: BoxDecoration(
-                color: Colors.orange,
-                borderRadius: BorderRadius.circular(12.r),
-              ),
-              child: Text(
-                '${activeBookings.length}',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
+        Text(
+          'Active Services',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        SizedBox(height: 16.h),
-        ...activeBookings.map((booking) {
-        final car = carState.cars.firstWhere(
-          (c) => c.id == booking.carId,
-          orElse: () => carState.cars.first,
-        );
-
-        return Card(
-          margin: EdgeInsets.only(bottom: 12.h),
-          elevation: 3,
-          child: Container(
+        const SizedBox(height: 16),
+        if (activeServices.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12.r),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: booking.status == BookingStatus.completedPendingPayment
-                    ? [
-                        Colors.deepPurple.shade50,
-                        Colors.purple.shade50,
-                      ]
-                    : [
-                        Colors.blue.shade50,
-                        Colors.lightBlue.shade50,
-                      ],
-              ),
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey[200]!),
             ),
-            child: Padding(
-                padding: EdgeInsets.all(16.w),
+            child: Column(
+              children: [
+                Icon(
+                  Icons.build,
+                  size: 40,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'No active services',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Your services will appear here when in progress',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          ListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: activeServices.length,
+            itemBuilder: (context, index) {
+              final service = activeServices[index];
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.grey.withValues(alpha: 0.1),
+                      spreadRadius: 1,
+                      blurRadius: 3,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Status Badge
                     Row(
                       children: [
                         Container(
-                          padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
+                          width: 50,
+                          height: 50,
                           decoration: BoxDecoration(
-                            color: _getStatusColor(booking.status),
-                            borderRadius: BorderRadius.circular(20.r),
+                            color: Colors.orange.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _getStatusIcon(booking.status),
-                                size: 14.sp,
-                                color: Colors.white,
-                              ),
-                              SizedBox(width: 6.w),
-                              Text(
-                                _getStatusText(booking.status),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12.sp,
-                                ),
-                              ),
-                            ],
+                          child: const Icon(
+                            Icons.build,
+                            size: 24,
+                            color: Colors.orange,
                           ),
                         ),
-                        const Spacer(),
-                        if (booking.status == BookingStatus.completedPendingPayment)
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
-                            decoration: BoxDecoration(
-                              color: Colors.orange,
-                              borderRadius: BorderRadius.circular(12.r),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.payment, size: 12.sp, color: Colors.white),
-                                SizedBox(width: 4.w),
-                                Text(
-                                  'Payment Due',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10.sp,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
-                    ),
-                    
-                    SizedBox(height: 12.h),
-                    
-                    // Car Info
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: Colors.white,
-                          radius: 24.r,
-                          child: Icon(
-                            Icons.directions_car,
-                            color: Theme.of(context).primaryColor,
-                            size: 28.sp,
-                          ),
-                        ),
-                        SizedBox(width: 12.w),
+                        const SizedBox(width: 16),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                '${car.make} ${car.model}',
-                                style: TextStyle(
+                                service['serviceType'],
+                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16.sp,
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
+                              const SizedBox(height: 4),
                               Text(
-                                car.licensePlate,
-                                style: TextStyle(
-                                  color: Colors.grey[700],
-                                  fontSize: 13.sp,
+                                '${service['carMake']} ${service['carModel']}',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Colors.grey[600],
                                 ),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            service['status'],
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Colors.orange,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                    
-                    SizedBox(height: 12.h),
-                    Divider(height: 1.h, color: Colors.grey.shade300),
-                    SizedBox(height: 12.h),
-                    
-                    // Service Type & Date
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.schedule,
+                                size: 16,
+                                color: Colors.blue,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Started at ${service['startTime']}',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.blue[700],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.timer,
+                                size: 16,
+                                color: Colors.blue,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Est. completion: ${service['estimatedCompletion']}',
+                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: Colors.blue[700],
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
-                        Icon(Icons.build, size: 16.sp, color: Colors.grey[600]),
-                        SizedBox(width: 8.w),
+                        const Icon(
+                          Icons.person,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                        const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            _getMaintenanceTypeName(booking.maintenanceType),
-                            style: TextStyle(
-                              fontSize: 13.sp,
-                              color: Colors.grey[800],
+                            'Technician: ${service['technicianName']}',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[600],
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: 8.h),
-                    Row(
-                      children: [
-                        Icon(Icons.calendar_today, size: 16.sp, color: Colors.grey[600]),
-                        SizedBox(width: 8.w),
-                        Text(
-                          DateFormat('dd MMM yyyy, HH:mm').format(booking.scheduledDate),
-                          style: TextStyle(
-                            fontSize: 13.sp,
-                            color: Colors.grey[800],
-                          ),
-                        ),
-                      ],
-                    ),
-                    
-                    // Show total cost if completed and pending payment
-                    if (booking.status == BookingStatus.completedPendingPayment) ...[
-                      SizedBox(height: 12.h),
-                      GestureDetector(
-                        onTap: () {
-                          final car = carState.cars.where((c) => c.id == booking.carId).firstOrNull;
-                          showDialog(
-                            context: context,
-                            builder: (context) => DetailedInvoiceDialog(
-                              booking: booking,
-                              car: car,
-                            ),
-                          );
-                        },
-                        child: Container(
-                          padding: EdgeInsets.all(12.w),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8.r),
-                            border: Border.all(color: Colors.grey.shade300),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Total Amount',
-                                    style: TextStyle(
-                                      fontSize: 12.sp,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                  SizedBox(height: 4.h),
-                                  Row(
-                                    children: [
-                                      Text(
-                                        '\$${booking.totalCost.toStringAsFixed(2)}',
-                                        style: TextStyle(
-                                          fontSize: 20.sp,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.green,
-                                        ),
-                                      ),
-                                      SizedBox(width: 8.w),
-                                      Icon(
-                                        Icons.receipt_long,
-                                        size: 16.sp,
-                                        color: Colors.green,
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                              Icon(
-                                Icons.arrow_forward_ios,
-                                size: 16.sp,
-                                color: Colors.grey,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                    
-                    // Show progress message if in progress
-                    if (booking.status == BookingStatus.inProgress) ...[
-                      SizedBox(height: 12.h),
-                      Container(
-                        padding: EdgeInsets.all(12.w),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade100,
-                          borderRadius: BorderRadius.circular(8.r),
-                        ),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 20.w,
-                              height: 20.h,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.blue.shade700,
-                              ),
-                            ),
-                            SizedBox(width: 12.w),
-                            Expanded(
-                              child: Text(
-                                'Our technician is working on your vehicle',
-                                style: TextStyle(
-                                  fontSize: 12.sp,
-                                  color: Colors.blue.shade900,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
                   ],
                 ),
-              ),
-            ),
-          );
-      }),
+              );
+            },
+          ),
       ],
     );
-  }
-
-  Color _getStatusColor(BookingStatus status) {
-    switch (status) {
-      case BookingStatus.inProgress:
-        return Colors.blue;
-      case BookingStatus.completedPendingPayment:
-        return Colors.deepPurple;
-      default:
-        return Colors.grey;
-    }
-  }
-
-  IconData _getStatusIcon(BookingStatus status) {
-    switch (status) {
-      case BookingStatus.inProgress:
-        return Icons.build_circle;
-      case BookingStatus.completedPendingPayment:
-        return Icons.check_circle;
-      default:
-        return Icons.info;
-    }
-  }
-
-  String _getStatusText(BookingStatus status) {
-    switch (status) {
-      case BookingStatus.inProgress:
-        return 'Service in Progress';
-      case BookingStatus.completedPendingPayment:
-        return 'Service Completed';
-      default:
-        return 'Unknown';
-    }
-  }
-
-  String _getMaintenanceTypeName(MaintenanceType type) {
-    switch (type) {
-      case MaintenanceType.regular:
-        return 'Regular Maintenance';
-      case MaintenanceType.repair:
-        return 'Repair Service';
-      case MaintenanceType.inspection:
-        return 'Inspection';
-      case MaintenanceType.emergency:
-        return 'Emergency Service';
-    }
   }
 }
